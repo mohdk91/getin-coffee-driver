@@ -137,6 +137,33 @@ class _MobileStartupGateState extends State<MobileStartupGate> {
       return widget.child;
     }
 
+    if (config.maintenance.enabled) {
+      return _StartupShell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.construction_outlined, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'GETIN is temporarily unavailable',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              (config.maintenance.message == null ||
+                      config.maintenance.message!.trim().isEmpty)
+                  ? 'We are performing scheduled maintenance. Please try again shortly.'
+                  : config.maintenance.message!,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton(onPressed: _load, child: const Text('Check again')),
+          ],
+        ),
+      );
+    }
+
     if (config.client.updateRequired == true) {
       return _StartupShell(
         child: Column(

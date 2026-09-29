@@ -19,7 +19,8 @@ class _Runtime implements AppRuntimeInfoProvider {
 
 class _Loader implements MobileSystemConfigLoader {
   final bool updateRequired;
-  const _Loader(this.updateRequired);
+  final bool maintenance;
+  const _Loader(this.updateRequired, {this.maintenance = false});
 
   @override
   Future<MobileSystemConfig> fetch(
@@ -29,7 +30,10 @@ class _Loader implements MobileSystemConfigLoader {
         'mobile_apps': <String, dynamic>{
           'ios': <String, dynamic>{},
           'android': <String, dynamic>{},
-          'maintenance': <String, dynamic>{'enabled': false},
+          'maintenance': <String, dynamic>{
+            'enabled': maintenance,
+            'message': maintenance ? 'Scheduled maintenance.' : null,
+          },
         },
         'client': <String, dynamic>{
           'platform': platform,
@@ -66,6 +70,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Update required'), findsOneWidget);
+    expect(find.text('APP READY'), findsNothing);
+  });
+
+  testWidgets('startup gate blocks clients during maintenance', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MobileStartupGate(
+          appConfig: appConfig,
+          loader: _Loader(false, maintenance: true),
+          runtimeInfoProvider: _Runtime(),
+          child: Text('APP READY'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('GETIN is temporarily unavailable'), findsOneWidget);
+    expect(find.text('Scheduled maintenance.'), findsOneWidget);
     expect(find.text('APP READY'), findsNothing);
   });
 
