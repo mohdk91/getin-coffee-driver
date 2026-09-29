@@ -1,7 +1,14 @@
 import '../network/api_client.dart';
 import 'mobile_system_config.dart';
 
-class MobileSystemConfigRepository {
+abstract class MobileSystemConfigLoader {
+  Future<MobileSystemConfig> fetch({
+    required String platform,
+    required String version,
+  });
+}
+
+class MobileSystemConfigRepository implements MobileSystemConfigLoader {
   final ApiClient apiClient;
 
   const MobileSystemConfigRepository(this.apiClient);

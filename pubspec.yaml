@@ -13,6 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   shared_preferences: 2.3.3
   flutter_secure_storage: ^10.3.4
+  package_info_plus: ^8.0.2
   country_picker: ^2.0.27
   url_launcher: 6.2.6
   file_picker: 8.1.4
