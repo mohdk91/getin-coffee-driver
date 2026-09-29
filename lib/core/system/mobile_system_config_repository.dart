@@ -19,6 +19,7 @@ class MobileSystemConfigRepository implements MobileSystemConfigLoader {
     this.cache = const MobileSystemConfigCache(),
   });
 
+  @override
   Future<MobileSystemConfig> fetch({
     required String platform,
     required String version,

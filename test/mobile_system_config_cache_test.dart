@@ -114,15 +114,15 @@ void main() {
       version: '1.0.0',
     );
 
-    final apiClient = ApiClient(
-      const AppConfig(
+    const apiClient = ApiClient(
+      AppConfig(
         environment: AppEnvironment.development,
         apiBaseUrl: 'https://offline.example/api',
       ),
-      transport: const _OfflineTransport(),
-      retryPolicy: const ApiRetryPolicy(maxAttempts: 1),
+      transport: _OfflineTransport(),
+      retryPolicy: ApiRetryPolicy(maxAttempts: 1),
     );
-    final repository = MobileSystemConfigRepository(
+    const repository = MobileSystemConfigRepository(
       apiClient,
       cache: cache,
     );

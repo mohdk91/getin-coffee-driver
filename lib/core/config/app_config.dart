@@ -28,7 +28,7 @@ class AppConfig {
     return AppConfig(
       environment: AppEnvironment.parse(environmentValue),
       apiBaseUrl: apiBaseUrl.trim(),
-      requestTimeout: Duration(
+      requestTimeout: const Duration(
         seconds: timeoutSeconds > 0 ? timeoutSeconds : 20,
       ),
     );
