@@ -26,6 +26,7 @@ class GetinDriverApp extends StatelessWidget {
       localizationsDelegates: const [AppLocalizations.delegate],
       home: MobileStartupGate(
         appConfig: config,
+        appKind: MobileAppKind.driver,
         loader: config.isApiConfigured
             ? MobileSystemConfigRepository(ApiClient(config))
             : null,

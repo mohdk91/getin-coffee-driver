@@ -20,7 +20,12 @@ class _Runtime implements AppRuntimeInfoProvider {
 class _Loader implements MobileSystemConfigLoader {
   final bool updateRequired;
   final bool maintenance;
-  const _Loader(this.updateRequired, {this.maintenance = false});
+  final bool appEnabled;
+  const _Loader(
+    this.updateRequired, {
+    this.maintenance = false,
+    this.appEnabled = true,
+  });
 
   @override
   Future<MobileSystemConfig> fetch(
@@ -44,6 +49,14 @@ class _Loader implements MobileSystemConfigLoader {
         'languages': <String, dynamic>{
           'supported': <String>['en']
         },
+        'features': <String, dynamic>{
+          'customer': <String, dynamic>{
+            'app': true,
+          },
+          'driver': <String, dynamic>{
+            'app': appEnabled,
+          },
+        },
       },
     });
   }
@@ -61,6 +74,7 @@ void main() {
       const MaterialApp(
         home: MobileStartupGate(
           appConfig: appConfig,
+          appKind: MobileAppKind.driver,
           loader: _Loader(true),
           runtimeInfoProvider: _Runtime(),
           child: Text('APP READY'),
@@ -73,11 +87,32 @@ void main() {
     expect(find.text('APP READY'), findsNothing);
   });
 
+  testWidgets('startup gate blocks an app disabled by operations',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MobileStartupGate(
+          appConfig: appConfig,
+          appKind: MobileAppKind.driver,
+          loader: _Loader(false, appEnabled: false),
+          runtimeInfoProvider: _Runtime(),
+          child: Text('APP READY'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text('This GETIN app is currently unavailable'), findsOneWidget);
+    expect(find.text('APP READY'), findsNothing);
+  });
+
   testWidgets('startup gate blocks clients during maintenance', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: MobileStartupGate(
           appConfig: appConfig,
+          appKind: MobileAppKind.driver,
           loader: _Loader(false, maintenance: true),
           runtimeInfoProvider: _Runtime(),
           child: Text('APP READY'),
@@ -96,6 +131,7 @@ void main() {
       const MaterialApp(
         home: MobileStartupGate(
           appConfig: appConfig,
+          appKind: MobileAppKind.driver,
           loader: _Loader(false),
           runtimeInfoProvider: _Runtime(),
           child: Text('APP READY'),

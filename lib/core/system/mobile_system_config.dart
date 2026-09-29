@@ -7,6 +7,8 @@ class MobileSystemConfig {
   final MobileClientCompatibility client;
   final String defaultLanguage;
   final List<String> supportedLanguages;
+  final MobileFeatureFlags customerFeatures;
+  final MobileFeatureFlags driverFeatures;
 
   const MobileSystemConfig({
     required this.apiVersion,
@@ -17,6 +19,8 @@ class MobileSystemConfig {
     required this.client,
     required this.defaultLanguage,
     required this.supportedLanguages,
+    required this.customerFeatures,
+    required this.driverFeatures,
   });
 
   factory MobileSystemConfig.fromApiEnvelope(Map<String, dynamic> envelope) {
@@ -25,6 +29,7 @@ class MobileSystemConfig {
     final maintenance = _map(mobileApps['maintenance']);
     final languages = _map(data['languages']);
     final supported = languages['supported'];
+    final features = _map(data['features']);
 
     return MobileSystemConfig(
       apiVersion: data['api_version']?.toString() ?? 'v1',
@@ -40,6 +45,8 @@ class MobileSystemConfig {
       supportedLanguages: supported is List
           ? supported.map((value) => value.toString()).toList(growable: false)
           : const <String>['en'],
+      customerFeatures: MobileFeatureFlags.fromJson(_map(features['customer'])),
+      driverFeatures: MobileFeatureFlags.fromJson(_map(features['driver'])),
     );
   }
 
@@ -56,7 +63,31 @@ class MobileSystemConfig {
           'default': defaultLanguage,
           'supported': supportedLanguages,
         },
+        'features': <String, dynamic>{
+          'customer': customerFeatures.toJson(),
+          'driver': driverFeatures.toJson(),
+        },
       };
+}
+
+class MobileFeatureFlags {
+  final Map<String, bool> values;
+
+  const MobileFeatureFlags(this.values);
+
+  factory MobileFeatureFlags.fromJson(Map<String, dynamic> json) {
+    return MobileFeatureFlags(
+      <String, bool>{
+        for (final entry in json.entries) entry.key: _bool(entry.value),
+      },
+    );
+  }
+
+  bool enabled(String key, {bool defaultValue = true}) {
+    return values[key] ?? defaultValue;
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{...values};
 }
 
 class MobileReleaseConfig {

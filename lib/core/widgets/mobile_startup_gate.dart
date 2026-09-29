@@ -6,6 +6,8 @@ import '../system/mobile_system_config.dart';
 import '../system/mobile_system_config_repository.dart';
 import '../theme/app_colors.dart';
 
+enum MobileAppKind { customer, driver }
+
 class MobileSystemConfigScope extends InheritedWidget {
   final MobileSystemConfig config;
 
@@ -29,6 +31,7 @@ class MobileSystemConfigScope extends InheritedWidget {
 
 class MobileStartupGate extends StatefulWidget {
   final AppConfig appConfig;
+  final MobileAppKind appKind;
   final Widget child;
   final MobileSystemConfigLoader? loader;
   final AppRuntimeInfoProvider runtimeInfoProvider;
@@ -36,6 +39,7 @@ class MobileStartupGate extends StatefulWidget {
   const MobileStartupGate({
     super.key,
     required this.appConfig,
+    required this.appKind,
     required this.child,
     this.loader,
     this.runtimeInfoProvider = const PackageAppRuntimeInfoProvider(),
@@ -135,6 +139,32 @@ class _MobileStartupGateState extends State<MobileStartupGate> {
     final config = _systemConfig;
     if (config == null) {
       return widget.child;
+    }
+
+    final appEnabled = widget.appKind == MobileAppKind.customer
+        ? config.customerFeatures.enabled('app')
+        : config.driverFeatures.enabled('app');
+
+    if (!appEnabled) {
+      return const _StartupShell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.pause_circle_outline, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'This GETIN app is currently unavailable',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'The service has been temporarily disabled by GETIN operations.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
     }
 
     if (config.maintenance.enabled) {
