@@ -77,17 +77,24 @@ void main() {
     expect(result.failure?.type, DriverRegistrationFailureType.invalidInput);
   });
 
-  test('non-development repository never fakes registration success', () async {
-    final repository = DriverRegistrationRepositoryFactory.create(
-      const AppConfig(
-        environment: AppEnvironment.production,
-        apiBaseUrl: 'https://api.example.com',
-      ),
-    );
-    final result = await repository.submit(validDraft());
+  test(
+    'configured production repository uses API and never fakes registration success',
+    () async {
+      final repository = DriverRegistrationRepositoryFactory.create(
+        const AppConfig(
+          environment: AppEnvironment.production,
+          apiBaseUrl: 'https://api.example.com',
+        ),
+      );
 
-    expect(repository.source, DriverRegistrationSource.unavailable);
-    expect(result.isSuccess, isFalse);
-    expect(result.failure?.type, DriverRegistrationFailureType.unavailable);
-  });
+      // The legacy fixture intentionally has no password. Phase 9 production
+      // registration must select the real API repository, but invalid input must
+      // still fail locally instead of inventing a successful application.
+      final result = await repository.submit(validDraft());
+
+      expect(repository.source, DriverRegistrationSource.api);
+      expect(result.isSuccess, isFalse);
+      expect(result.failure?.type, DriverRegistrationFailureType.invalidInput);
+    },
+  );
 }
