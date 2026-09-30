@@ -32,20 +32,23 @@ if (hasReleaseSigning) {
 
 android {
     namespace = "com.getincoffee.driver"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // flutter_secure_storage 10.x compiles against Android API 36.
+    // Keep targetSdk owned by the Flutter toolchain; only compile against API 36 here.
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.getincoffee.driver"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
@@ -65,8 +68,6 @@ android {
     buildTypes {
         release {
             // Never sign a production artifact with the Android debug key.
-            // Add android/key.properties from key.properties.example when the
-            // real Getin release keystore is available.
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.release
             }

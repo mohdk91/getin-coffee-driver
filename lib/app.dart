@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'core/config/app_config.dart';
 import 'core/localization/app_localizations.dart';
+import 'core/network/api_client.dart';
+import 'core/system/mobile_system_config_repository.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/mobile_startup_gate.dart';
 import 'features/splash/driver_splash_screen.dart';
 
 class GetinDriverApp extends StatelessWidget {
@@ -21,7 +24,14 @@ class GetinDriverApp extends StatelessWidget {
       theme: AppTheme.light(),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [AppLocalizations.delegate],
-      home: DriverSplashScreen(config: config),
+      home: MobileStartupGate(
+        appConfig: config,
+        appKind: MobileAppKind.driver,
+        loader: config.isApiConfigured
+            ? MobileSystemConfigRepository(ApiClient(config))
+            : null,
+        child: DriverSplashScreen(config: config),
+      ),
     );
   }
 }
