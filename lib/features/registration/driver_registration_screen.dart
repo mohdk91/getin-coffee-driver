@@ -42,6 +42,8 @@ class _DriverRegistrationScreenState extends State<DriverRegistrationScreen> {
   final _dateOfBirthController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _passwordConfirmationController = TextEditingController();
   final _nationalIdController = TextEditingController();
   final _licenceController = TextEditingController();
   final _licenceExpiryController = TextEditingController();
@@ -78,6 +80,8 @@ class _DriverRegistrationScreenState extends State<DriverRegistrationScreen> {
     _dateOfBirthController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
+    _passwordConfirmationController.dispose();
     _nationalIdController.dispose();
     _licenceController.dispose();
     _licenceExpiryController.dispose();
@@ -184,6 +188,8 @@ class _DriverRegistrationScreenState extends State<DriverRegistrationScreen> {
       dialCode: _dialCode,
       phoneNumber: _phoneController.text.trim(),
       email: _emailController.text.trim(),
+      password: _passwordController.text,
+      passwordConfirmation: _passwordConfirmationController.text,
       nationalId: _nationalIdController.text.trim(),
       drivingLicenseNumber: _licenceController.text.trim(),
       drivingLicenseExpiry: _licenceExpiryController.text.trim(),
@@ -500,6 +506,38 @@ class _DriverRegistrationScreenState extends State<DriverRegistrationScreen> {
             decoration: const InputDecoration(
               labelText: 'Email address',
               prefixIcon: Icon(Icons.mail_outline_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: true,
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              final password = value ?? '';
+              if (password.length < 8) return 'Use at least 8 characters';
+              if (!RegExp(r'[A-Za-z]').hasMatch(password) ||
+                  !RegExp(r'[0-9]').hasMatch(password)) {
+                return 'Include at least one letter and one number';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _passwordConfirmationController,
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+            validator: (value) => value == _passwordController.text
+                ? null
+                : 'Passwords do not match',
+            decoration: const InputDecoration(
+              labelText: 'Confirm password',
+              prefixIcon: Icon(Icons.lock_reset_rounded),
             ),
           ),
         ],
