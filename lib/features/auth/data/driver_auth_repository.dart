@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
+import '../../../core/device/driver_device_registrar.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/driver_token_store.dart';
 import '../domain/driver_auth_models.dart';
@@ -52,6 +53,7 @@ class DriverAuthRepositoryFactory {
 class ApiDriverAuthRepository implements DriverAuthRepository {
   final DriverApiContext context;
   late final DriverTokenStore _tokens = DriverTokenStore(context.secureStore);
+  late final DriverDeviceRegistrar _devices = DriverDeviceRegistrar(context);
 
   ApiDriverAuthRepository(this.context);
 
@@ -106,6 +108,7 @@ class ApiDriverAuthRepository implements DriverAuthRepository {
       }
 
       await _tokens.saveAccessToken(token);
+      await _devices.registerBestEffort();
       return DriverAuthResult.success(
         _mapDriver(Map<String, dynamic>.from(rawDriver)),
       );

@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
+import '../../../core/device/driver_device_registrar.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/driver_token_store.dart';
 import '../domain/driver_registration_models.dart';
@@ -35,6 +36,7 @@ class DriverRegistrationRepositoryFactory {
 class ApiDriverRegistrationRepository implements DriverRegistrationRepository {
   final DriverApiContext context;
   late final DriverTokenStore _tokens = DriverTokenStore(context.secureStore);
+  late final DriverDeviceRegistrar _devices = DriverDeviceRegistrar(context);
 
   ApiDriverRegistrationRepository(this.context);
 
@@ -80,6 +82,7 @@ class ApiDriverRegistrationRepository implements DriverRegistrationRepository {
             'Driver registration response is incomplete.');
       }
       await _tokens.saveAccessToken(token);
+      await _devices.registerBestEffort();
       final mapped = Map<String, dynamic>.from(driver);
       final submittedAt = DateTime.tryParse(
             mapped['application_submitted_at']?.toString() ?? '',
