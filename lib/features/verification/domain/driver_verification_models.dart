@@ -1,4 +1,4 @@
-enum DriverVerificationSource { demo, unavailable }
+enum DriverVerificationSource { demo, api, unavailable }
 
 enum DriverVerificationState {
   pending,
