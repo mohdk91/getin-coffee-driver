@@ -53,4 +53,6 @@ class MemorySecureStore implements SecureStore {
 abstract final class SecureStoreKeys {
   static const accessToken = 'getin.access_token';
   static const refreshToken = 'getin.refresh_token';
+  static const driverDeviceId = 'getin.driver.device_id';
+  static const driverPin = 'getin.driver.pin';
 }

@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_vehicle_models.dart';
 
 abstract interface class DriverVehicleRepository {
@@ -15,10 +17,107 @@ abstract interface class DriverVehicleRepository {
 class DriverVehicleRepositoryFactory {
   DriverVehicleRepositoryFactory._();
 
-  static DriverVehicleRepository create(AppConfig config) {
+  static DriverVehicleRepository create(AppConfig config,
+      {DriverApiContext? context}) {
+    if (config.isApiConfigured) {
+      return ApiDriverVehicleRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? DemoDriverVehicleRepository()
         : const UnavailableDriverVehicleRepository();
+  }
+}
+
+class ApiDriverVehicleRepository implements DriverVehicleRepository {
+  final DriverApiContext context;
+  Map<String, dynamic>? _raw;
+  ApiDriverVehicleRepository(this.context);
+  @override
+  DriverVehicleDataSource get source => DriverVehicleDataSource.api;
+  @override
+  Future<DriverVehicleLoadResult> loadVehicle() async {
+    try {
+      final items = DriverApiContext.nestedItems(await context.apiClient
+          .getJson('/v1/driver/vehicles', authenticated: true));
+      final maps = items
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (maps.isEmpty) {
+        return const DriverVehicleLoadResult.failure(
+          'No vehicle is registered for this driver account.',
+        );
+      }
+      _raw = maps.firstWhere((e) => e['is_primary'] == true,
+          orElse: () => maps.first);
+      return DriverVehicleLoadResult.success(_map(_raw!));
+    } on ApiException catch (e) {
+      return DriverVehicleLoadResult.failure(e.message);
+    } on FormatException catch (e) {
+      return DriverVehicleLoadResult.failure(e.message);
+    }
+  }
+
+  @override
+  Future<DriverVehicleUpdateResult> updateVehicle(
+      DriverVehicleUpdateRequest request) async {
+    final raw = _raw;
+    final id = raw?['id'];
+    if (id == null) {
+      return const DriverVehicleUpdateResult.failure(
+        'Reload vehicle data before saving changes.',
+      );
+    }
+    final currentMake = raw?['make']?.toString() ?? '';
+    final combined = request.makeModel.trim();
+    var make = currentMake;
+    var model = combined;
+    if (currentMake.isNotEmpty &&
+        combined.toLowerCase().startsWith('${currentMake.toLowerCase()} ')) {
+      model = combined.substring(currentMake.length).trim();
+    }
+    try {
+      final data = DriverApiContext.dataMap(await context.apiClient.putJson(
+          '/v1/driver/vehicles/$id',
+          authenticated: true,
+          body: <String, Object?>{
+            'make': make,
+            'model': model,
+            'color': request.color.trim()
+          }));
+      _raw = data;
+      return DriverVehicleUpdateResult.success(_map(data));
+    } on ApiException catch (e) {
+      return DriverVehicleUpdateResult.failure(e.message);
+    }
+  }
+
+  DriverVehicleSnapshot _map(Map<String, dynamic> data) {
+    final make = data['make']?.toString().trim() ?? '';
+    final model = data['model']?.toString().trim() ?? '';
+    final verification = data['verification_status']?.toString().toLowerCase();
+    final documentStatus = switch (verification) {
+      'approved' => DriverVehicleDocumentStatus.valid,
+      'rejected' => DriverVehicleDocumentStatus.rejected,
+      _ => DriverVehicleDocumentStatus.pendingReview
+    };
+    final active = data['is_active'] == true;
+    return DriverVehicleSnapshot(
+        vehicleType: data['vehicle_type']?.toString() ?? '',
+        plate: data['plate_number']?.toString() ?? '',
+        makeModel: [make, model].where((v) => v.isNotEmpty).join(' '),
+        color: data['color']?.toString() ?? '',
+        status:
+            active ? DriverVehicleStatus.active : DriverVehicleStatus.inactive,
+        documentStatus: documentStatus,
+        editableFields: const {
+          DriverVehicleField.makeModel,
+          DriverVehicleField.color
+        },
+        updatedAt: DateTime.tryParse(data['updated_at']?.toString() ?? '') ??
+            DateTime.now());
   }
 }
 

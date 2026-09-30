@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import '../config/app_config.dart';
 import 'api_exception.dart';
@@ -36,7 +37,9 @@ class ApiClient {
 
     for (final entry in query.entries) {
       final value = entry.value;
-      if (value != null) queryParameters[entry.key] = value.toString();
+      if (value != null) {
+        queryParameters[entry.key] = value.toString();
+      }
     }
 
     return queryParameters.isEmpty
@@ -72,6 +75,113 @@ class ApiClient {
       authenticated: authenticated,
       retryable: retryable,
     );
+  }
+
+  Future<Map<String, dynamic>> putJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'PUT',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'PATCH',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'DELETE',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
+  Future<Map<String, dynamic>> postMultipartFile(
+    String path, {
+    required String filePath,
+    String fileField = 'file',
+    Map<String, String> fields = const {},
+    bool authenticated = false,
+  }) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw const ApiException('Selected document file is unavailable.');
+    }
+    final boundary = 'getin-${DateTime.now().microsecondsSinceEpoch}';
+    final request = await HttpClient().postUrl(endpoint(path));
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    request.headers.set(HttpHeaders.contentTypeHeader,
+        'multipart/form-data; boundary=$boundary');
+    if (authenticated) {
+      final token = await tokenProvider?.call();
+      if (token == null || token.trim().isEmpty) {
+        throw const ApiException(
+          'Authentication token is unavailable.',
+          statusCode: 401,
+        );
+      }
+      request.headers
+          .set(HttpHeaders.authorizationHeader, 'Bearer ${token.trim()}');
+    }
+    for (final entry in fields.entries) {
+      request.write(
+          '--$boundary\r\nContent-Disposition: form-data; name="${entry.key}"\r\n\r\n${entry.value}\r\n');
+    }
+    final name =
+        file.uri.pathSegments.isEmpty ? 'document' : file.uri.pathSegments.last;
+    request.write(
+        '--$boundary\r\nContent-Disposition: form-data; name="$fileField"; filename="$name"\r\nContent-Type: ${_mimeFor(name)}\r\n\r\n');
+    request.add(await file.readAsBytes());
+    request.write('\r\n--$boundary--\r\n');
+    final response = await request.close().timeout(config.requestTimeout);
+    final body = await utf8.decoder.bind(response).join();
+    return _decode(ApiRawResponse(statusCode: response.statusCode, body: body));
+  }
+
+  String _mimeFor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.pdf')) {
+      return 'application/pdf';
+    }
+    if (lower.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    return 'image/jpeg';
   }
 
   Future<Map<String, dynamic>> requestJson(
@@ -123,7 +233,9 @@ class ApiClient {
 
         return _decode(response);
       } catch (error) {
-        if (error is ApiException) rethrow;
+        if (error is ApiException) {
+          rethrow;
+        }
         lastTransportError = error;
 
         if (!canRetry || attempt >= attempts) {

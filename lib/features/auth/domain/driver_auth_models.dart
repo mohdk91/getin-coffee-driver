@@ -1,4 +1,4 @@
-enum DriverAuthSource { demo, unavailable }
+enum DriverAuthSource { demo, api, unavailable }
 
 enum DriverAccessState {
   active,

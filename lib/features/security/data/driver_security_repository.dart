@@ -1,7 +1,12 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/storage/driver_token_store.dart';
+import '../../../core/storage/secure_store.dart';
 import '../domain/driver_security_models.dart';
 import 'driver_biometric_gateway.dart';
+import 'driver_sessions_repository.dart';
 
 abstract interface class DriverSecurityRepository {
   DriverSecurityDataSource get source;
@@ -25,10 +30,130 @@ abstract interface class DriverSecurityRepository {
 class DriverSecurityRepositoryFactory {
   DriverSecurityRepositoryFactory._();
 
-  static DriverSecurityRepository create(AppConfig config) {
+  static DriverSecurityRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      final apiContext = context ?? DriverApiContext.create(config);
+      return ApiDriverSecurityRepository(apiContext);
+    }
+
     return config.environment == AppEnvironment.development
         ? DemoDriverSecurityRepository()
         : const UnavailableDriverSecurityRepository();
+  }
+}
+
+class ApiDriverSecurityRepository implements DriverSecurityRepository {
+  final DriverApiContext context;
+  late final DriverSessionsRepository sessions =
+      DriverSessionsRepository(context);
+  late final DriverTokenStore tokens = DriverTokenStore(context.secureStore);
+
+  int minPin = 4;
+  int maxPin = 6;
+
+  ApiDriverSecurityRepository(this.context);
+
+  @override
+  DriverSecurityDataSource get source => DriverSecurityDataSource.api;
+
+  @override
+  Future<DriverSecurityLoadResult> loadSecurity() async {
+    try {
+      final policy = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/security/policy',
+          authenticated: true,
+        ),
+      );
+      final pinPolicy = policy['app_pin'] is Map
+          ? Map<String, dynamic>.from(policy['app_pin'] as Map)
+          : const <String, dynamic>{};
+      minPin = (pinPolicy['min_length'] as num?)?.toInt() ?? 4;
+      maxPin = (pinPolicy['max_length'] as num?)?.toInt() ?? 6;
+
+      final active = await sessions.load();
+      final pin = await context.secureStore.read(SecureStoreKeys.driverPin);
+
+      return DriverSecurityLoadResult.success(
+        DriverSecuritySnapshot(
+          passwordProtected: true,
+          passwordUpdatedAt: null,
+          pinConfigured: pin != null && pin.isNotEmpty,
+          pinDigits: pin?.length ?? minPin,
+          biometricReadiness: DriverBiometricReadiness.architectureReady,
+          biometricEnabled: false,
+          activeSessions: active,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverSecurityLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverSecurityLoadResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverSecurityActionResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await context.apiClient.putJson(
+        '/v1/driver/password',
+        authenticated: true,
+        body: <String, Object?>{
+          'current_password': currentPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': newPassword,
+        },
+      );
+      return const DriverSecurityActionResult.success('Password updated.');
+    } on ApiException catch (error) {
+      return DriverSecurityActionResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverSecurityActionResult> setPin({
+    required String pin,
+  }) async {
+    if (pin.length < minPin ||
+        pin.length > maxPin ||
+        !RegExp(r'^\d+$').hasMatch(pin)) {
+      return DriverSecurityActionResult.failure(
+        'PIN must contain $minPin to $maxPin digits.',
+      );
+    }
+
+    await context.secureStore.write(SecureStoreKeys.driverPin, pin);
+    return const DriverSecurityActionResult.success(
+      'Driver PIN saved securely on this device.',
+    );
+  }
+
+  @override
+  Future<DriverSecurityActionResult> revokeSession(String sessionId) async {
+    try {
+      await sessions.revoke(sessionId);
+      return const DriverSecurityActionResult.success('Session signed out.');
+    } on ApiException catch (error) {
+      return DriverSecurityActionResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverSecurityActionResult> logout() async {
+    try {
+      await sessions.revokeCurrent();
+      await tokens.clearAccessToken();
+      return const DriverSecurityActionResult.success('Signed out.');
+    } on ApiException catch (error) {
+      return DriverSecurityActionResult.failure(error.message);
+    }
   }
 }
 
@@ -42,8 +167,7 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
   DriverBiometricReadiness _biometricReadiness =
       DriverBiometricReadiness.architectureReady;
   String _currentPassword = 'Driver123!';
-
-  final List<DriverActiveSession> _sessions = <DriverActiveSession>[
+  final List<DriverActiveSession> _sessions = [
     DriverActiveSession(
       id: 'demo-current-device',
       deviceName: 'Android phone',
@@ -61,7 +185,6 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
       isCurrent: false,
     ),
   ];
-
   DateTime? _passwordUpdatedAt = DateTime(2026, 9, 10, 9, 30);
   bool _pinConfigured = true;
   int _pinDigits = 4;
@@ -71,7 +194,6 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
 
   @override
   Future<DriverSecurityLoadResult> loadSecurity() async {
-    await Future<void>.delayed(const Duration(milliseconds: 120));
     _biometricReadiness = await biometricGateway.readiness();
     return DriverSecurityLoadResult.success(_snapshot());
   }
@@ -81,8 +203,6 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
     required String currentPassword,
     required String newPassword,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 180));
-
     if (currentPassword != _currentPassword) {
       return const DriverSecurityActionResult.failure(
         'Current password is incorrect.',
@@ -91,11 +211,6 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
     if (newPassword.length < 8) {
       return const DriverSecurityActionResult.failure(
         'New password must be at least 8 characters.',
-      );
-    }
-    if (newPassword == currentPassword) {
-      return const DriverSecurityActionResult.failure(
-        'Choose a new password that is different from the current password.',
       );
     }
 
@@ -107,8 +222,9 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
   }
 
   @override
-  Future<DriverSecurityActionResult> setPin({required String pin}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 160));
+  Future<DriverSecurityActionResult> setPin({
+    required String pin,
+  }) async {
     if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
       return const DriverSecurityActionResult.failure(
         'PIN must contain 4 to 6 digits.',
@@ -123,9 +239,8 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
   }
 
   @override
-  Future<DriverSecurityActionResult> revokeSession(String sessionId) async {
-    await Future<void>.delayed(const Duration(milliseconds: 160));
-    final index = _sessions.indexWhere((session) => session.id == sessionId);
+  Future<DriverSecurityActionResult> revokeSession(String id) async {
+    final index = _sessions.indexWhere((session) => session.id == id);
     if (index < 0) {
       return const DriverSecurityActionResult.failure(
         'That session is no longer active.',
@@ -143,7 +258,6 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
 
   @override
   Future<DriverSecurityActionResult> logout() async {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
     return const DriverSecurityActionResult.success(
       'Demo session ended on this device.',
     );
@@ -157,7 +271,7 @@ class DemoDriverSecurityRepository implements DriverSecurityRepository {
       pinDigits: _pinDigits,
       biometricReadiness: _biometricReadiness,
       biometricEnabled: false,
-      activeSessions: List<DriverActiveSession>.unmodifiable(_sessions),
+      activeSessions: List.unmodifiable(_sessions),
       updatedAt: DateTime.now(),
     );
   }
@@ -191,7 +305,9 @@ class UnavailableDriverSecurityRepository implements DriverSecurityRepository {
   }
 
   @override
-  Future<DriverSecurityActionResult> setPin({required String pin}) async {
+  Future<DriverSecurityActionResult> setPin({
+    required String pin,
+  }) async {
     return _unavailable();
   }
 

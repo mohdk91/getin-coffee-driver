@@ -1,4 +1,4 @@
-enum DriverRegistrationSource { demo, unavailable }
+enum DriverRegistrationSource { demo, api, unavailable }
 
 enum DriverRegistrationFailureType {
   invalidInput,
@@ -59,6 +59,8 @@ class DriverRegistrationDraft {
   final String dialCode;
   final String phoneNumber;
   final String email;
+  final String password;
+  final String passwordConfirmation;
   final String nationalId;
   final String drivingLicenseNumber;
   final String drivingLicenseExpiry;
@@ -79,6 +81,8 @@ class DriverRegistrationDraft {
     required this.dialCode,
     required this.phoneNumber,
     required this.email,
+    this.password = '',
+    this.passwordConfirmation = '',
     required this.nationalId,
     required this.drivingLicenseNumber,
     required this.drivingLicenseExpiry,

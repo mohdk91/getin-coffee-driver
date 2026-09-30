@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_document_models.dart';
 
 abstract interface class DriverDocumentsRepository {
@@ -15,10 +17,89 @@ abstract interface class DriverDocumentsRepository {
 class DriverDocumentsRepositoryFactory {
   DriverDocumentsRepositoryFactory._();
 
-  static DriverDocumentsRepository create(AppConfig config) {
+  static DriverDocumentsRepository create(AppConfig config,
+      {DriverApiContext? context}) {
+    if (config.isApiConfigured) {
+      return ApiDriverDocumentsRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? DemoDriverDocumentsRepository()
         : const UnavailableDriverDocumentsRepository();
+  }
+}
+
+class ApiDriverDocumentsRepository implements DriverDocumentsRepository {
+  final DriverApiContext context;
+  const ApiDriverDocumentsRepository(this.context);
+  @override
+  DriverDocumentDataSource get source => DriverDocumentDataSource.api;
+  @override
+  Future<DriverDocumentsLoadResult> loadDocuments() async {
+    try {
+      final items = DriverApiContext.nestedItems(await context.apiClient
+          .getJson('/v1/driver/documents', authenticated: true));
+      return DriverDocumentsLoadResult.success(items
+          .whereType<Map>()
+          .map((item) => _map(Map<String, dynamic>.from(item)))
+          .toList(growable: false));
+    } on ApiException catch (e) {
+      return DriverDocumentsLoadResult.failure(e.message);
+    } on FormatException catch (e) {
+      return DriverDocumentsLoadResult.failure(e.message);
+    }
+  }
+
+  @override
+  Future<DriverDocumentReplacementResult> uploadReplacement(
+      DriverDocumentReplacementRequest request) async {
+    final id = int.tryParse(request.documentId);
+    final path = request.filePath;
+    if (id == null || path == null || path.isEmpty) {
+      return const DriverDocumentReplacementResult.failure(
+        'Choose a local PDF or image file before uploading a production replacement.',
+      );
+    }
+    try {
+      final data = DriverApiContext.dataMap(await context.apiClient
+          .postMultipartFile('/v1/driver/documents/$id/replace',
+              filePath: path, authenticated: true));
+      return DriverDocumentReplacementResult.success(_map(data));
+    } on ApiException catch (e) {
+      return DriverDocumentReplacementResult.failure(e.message);
+    }
+  }
+
+  DriverDocumentSnapshot _map(Map<String, dynamic> data) {
+    final rawType = data['document_type']?.toString().toLowerCase() ?? '';
+    final type = rawType.contains('license')
+        ? DriverDocumentType.driverLicense
+        : rawType.contains('insurance')
+            ? DriverDocumentType.insurance
+            : rawType.contains('vehicle') || rawType.contains('registration')
+                ? DriverDocumentType.vehicleRegistration
+                : DriverDocumentType.identity;
+    final status = switch (data['status']?.toString().toLowerCase()) {
+      'approved' => DriverDocumentApprovalState.approved,
+      'rejected' => DriverDocumentApprovalState.rejected,
+      'expired' => DriverDocumentApprovalState.expired,
+      'missing' => DriverDocumentApprovalState.missing,
+      _ => DriverDocumentApprovalState.pendingReview
+    };
+    final reference = data['reference_number']?.toString().trim();
+    return DriverDocumentSnapshot(
+        id: data['id']?.toString() ?? '',
+        type: type,
+        referenceLabel: (reference == null || reference.isEmpty)
+            ? (data['title']?.toString() ?? type.label)
+            : reference,
+        approvalState: status,
+        expiryDate: DateTime.tryParse(data['expiry_date']?.toString() ?? ''),
+        replacementAllowed: status != DriverDocumentApprovalState.pendingReview,
+        replacementFileName: data['original_name']?.toString(),
+        replacementSubmittedAt:
+            DateTime.tryParse(data['uploaded_at']?.toString() ?? ''));
   }
 }
 
