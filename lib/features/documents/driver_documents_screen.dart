@@ -48,7 +48,9 @@ class _DriverDocumentsScreenState extends State<DriverDocumentsScreen> {
     });
 
     final result = await _repository.loadDocuments();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -59,6 +61,7 @@ class _DriverDocumentsScreenState extends State<DriverDocumentsScreen> {
 
   Future<void> _startReplacement(DriverDocumentSnapshot document) async {
     String? fileName;
+    String? filePath;
     try {
       if (widget.replacementFileSelector != null) {
         fileName = await widget.replacementFileSelector!();
@@ -69,9 +72,12 @@ class _DriverDocumentsScreenState extends State<DriverDocumentsScreen> {
           allowMultiple: false,
         );
         fileName = result?.files.single.name;
+        filePath = result?.files.single.path;
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content:
@@ -81,16 +87,21 @@ class _DriverDocumentsScreenState extends State<DriverDocumentsScreen> {
       return;
     }
 
-    if (!mounted || fileName == null) return;
+    if (!mounted || fileName == null) {
+      return;
+    }
 
     setState(() => _uploadingDocumentId = document.id);
     final result = await _repository.uploadReplacement(
       DriverDocumentReplacementRequest(
         documentId: document.id,
         fileName: fileName,
+        filePath: filePath,
       ),
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _uploadingDocumentId = null;

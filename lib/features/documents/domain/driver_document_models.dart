@@ -54,7 +54,9 @@ class DriverDocumentSnapshot {
 
   int? daysUntilExpiry(DateTime now) {
     final expiry = expiryDate;
-    if (expiry == null) return null;
+    if (expiry == null) {
+      return null;
+    }
     final today = DateTime(now.year, now.month, now.day);
     final expiryDay = DateTime(expiry.year, expiry.month, expiry.day);
     return expiryDay.difference(today).inDays;
@@ -62,8 +64,12 @@ class DriverDocumentSnapshot {
 
   DriverDocumentExpiryState expiryStateAt(DateTime now) {
     final days = daysUntilExpiry(now);
-    if (days == null) return DriverDocumentExpiryState.notApplicable;
-    if (days < 0) return DriverDocumentExpiryState.expired;
+    if (days == null) {
+      return DriverDocumentExpiryState.notApplicable;
+    }
+    if (days < 0) {
+      return DriverDocumentExpiryState.expired;
+    }
     if (days <= expiryWarningDays) {
       return DriverDocumentExpiryState.expiringSoon;
     }
@@ -115,10 +121,12 @@ class DriverDocumentsLoadResult {
 class DriverDocumentReplacementRequest {
   final String documentId;
   final String fileName;
+  final String? filePath;
 
   const DriverDocumentReplacementRequest({
     required this.documentId,
     required this.fileName,
+    this.filePath,
   });
 }
 
