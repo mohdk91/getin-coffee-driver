@@ -35,7 +35,7 @@ android {
     // flutter_secure_storage 10.x compiles against Android API 36.
     // Keep targetSdk owned by the Flutter toolchain; only compile against API 36 here.
     compileSdk = 36
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
