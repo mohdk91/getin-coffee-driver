@@ -74,6 +74,57 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> putJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'PUT',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'PATCH',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    Object? body,
+    Map<String, Object?> query = const {},
+    bool authenticated = false,
+    bool retryable = false,
+  }) {
+    return requestJson(
+      'DELETE',
+      path,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+      retryable: retryable,
+    );
+  }
+
   Future<Map<String, dynamic>> requestJson(
     String method,
     String path, {
