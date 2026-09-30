@@ -1,5 +1,8 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
+import '../../../core/storage/driver_token_store.dart';
 import '../domain/driver_auth_models.dart';
 
 abstract class DriverAuthRepository {
@@ -28,12 +31,159 @@ abstract class DriverAuthRepository {
 class DriverAuthRepositoryFactory {
   DriverAuthRepositoryFactory._();
 
-  static DriverAuthRepository create(AppConfig config) {
+  static DriverAuthRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverAuthRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
+
     if (config.environment == AppEnvironment.development) {
       return const DemoDriverAuthRepository();
     }
 
     return const UnavailableDriverAuthRepository();
+  }
+}
+
+class ApiDriverAuthRepository implements DriverAuthRepository {
+  final DriverApiContext context;
+  late final DriverTokenStore _tokens = DriverTokenStore(context.secureStore);
+
+  ApiDriverAuthRepository(this.context);
+
+  @override
+  DriverAuthSource get source => DriverAuthSource.api;
+
+  @override
+  Future<DriverAuthResult<DriverOtpChallenge>> requestOtp({
+    required String dialCode,
+    required String phoneNumber,
+  }) async {
+    return const DriverAuthResult.failure(
+      DriverAuthFailure(
+        type: DriverAuthFailureType.unavailable,
+        message:
+            'Phone OTP is not exposed by the Driver API yet. Use email and password to sign in.',
+      ),
+    );
+  }
+
+  @override
+  Future<DriverAuthResult<DriverAuthenticatedAccount>> verifyOtp({
+    required DriverOtpChallenge challenge,
+    required String code,
+  }) async {
+    return const DriverAuthResult.failure(
+      DriverAuthFailure(
+        type: DriverAuthFailureType.unavailable,
+        message: 'Phone OTP verification is not exposed by the Driver API yet.',
+      ),
+    );
+  }
+
+  @override
+  Future<DriverAuthResult<DriverAuthenticatedAccount>> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final envelope = await context.apiClient.postJson(
+        '/v1/driver/login',
+        body: <String, Object?>{
+          'identifier': email.trim(),
+          'password': password,
+        },
+      );
+      final data = DriverApiContext.dataMap(envelope);
+      final rawDriver = data['driver'];
+      final token = data['token']?.toString();
+      if (rawDriver is! Map || token == null || token.trim().isEmpty) {
+        throw const FormatException('Driver login response is incomplete.');
+      }
+
+      await _tokens.saveAccessToken(token);
+      return DriverAuthResult.success(
+        _mapDriver(Map<String, dynamic>.from(rawDriver)),
+      );
+    } on ApiException catch (error) {
+      return DriverAuthResult.failure(_failureFromApi(error));
+    } on FormatException catch (error) {
+      return DriverAuthResult.failure(
+        DriverAuthFailure(
+          type: DriverAuthFailureType.temporaryFailure,
+          message: error.message,
+          retryable: true,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<DriverAuthResult<DriverPasswordResetReceipt>> requestPasswordReset({
+    required String identifier,
+  }) async {
+    return const DriverAuthResult.failure(
+      DriverAuthFailure(
+        type: DriverAuthFailureType.unavailable,
+        message:
+            'Password reset is not exposed by the Driver API yet. Contact Getin operations.',
+      ),
+    );
+  }
+
+  DriverAuthenticatedAccount _mapDriver(Map<String, dynamic> driver) {
+    final accountStatus = driver['account_status']?.toString().toLowerCase();
+    final approvalStatus = driver['approval_status']?.toString().toLowerCase();
+    final canOperate = driver['can_operate'] == true;
+
+    final state = accountStatus != 'active'
+        ? DriverAccessState.disabled
+        : switch (approvalStatus) {
+            'approved' when canOperate => DriverAccessState.active,
+            'rejected' => DriverAccessState.rejected,
+            'suspended' => DriverAccessState.suspended,
+            'under_review' => DriverAccessState.pendingApproval,
+            _ => DriverAccessState.pendingApproval,
+          };
+
+    return DriverAuthenticatedAccount(
+      driverId: driver['id']?.toString() ?? '',
+      displayName: driver['name']?.toString() ?? 'Driver',
+      accessState: state,
+    );
+  }
+
+  DriverAuthFailure _failureFromApi(ApiException error) {
+    final status = error.statusCode;
+    if (status == 401) {
+      return DriverAuthFailure(
+        type: DriverAuthFailureType.invalidCredentials,
+        message: error.message,
+      );
+    }
+    if (status == 422) {
+      return DriverAuthFailure(
+        type: DriverAuthFailureType.invalidInput,
+        message: error.message,
+      );
+    }
+    if (status == 429) {
+      return DriverAuthFailure(
+        type: DriverAuthFailureType.tooManyAttempts,
+        message: error.message,
+      );
+    }
+    return DriverAuthFailure(
+      type: status != null && status >= 500
+          ? DriverAuthFailureType.temporaryFailure
+          : DriverAuthFailureType.unavailable,
+      message: error.message,
+      retryable: status == null || status >= 500,
+    );
   }
 }
 

@@ -49,6 +49,9 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     super.initState();
     _repository =
         widget.repository ?? DriverAuthRepositoryFactory.create(widget.config);
+    if (_repository.source == DriverAuthSource.api) {
+      _phoneMode = false;
+    }
   }
 
   @override
