@@ -9,6 +9,7 @@ import '../../core/navigation/driver_tab.dart';
 import '../../core/widgets/app_state_view.dart';
 import '../../core/widgets/driver_app_scaffold.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
+import '../availability/data/driver_availability_repository.dart';
 import '../background_location/data/driver_background_location_controller.dart';
 import '../background_location/domain/driver_background_location_models.dart';
 import '../delivery/data/driver_start_delivery_repository.dart';
@@ -46,7 +47,8 @@ import '../support/driver_support_chat_screen.dart';
 
 class DriverFoundationShell extends StatefulWidget {
   final AppConfig config;
-  final DriverHomeRepository homeRepository;
+  final DriverHomeRepository? homeRepository;
+  final DriverAvailabilityRepository? availabilityRepository;
   final DriverLocationRepository? locationRepository;
   final DriverOrderEligibilityRepository? eligibilityRepository;
   final DriverOrderAcceptanceRepository? acceptanceRepository;
@@ -65,7 +67,8 @@ class DriverFoundationShell extends StatefulWidget {
   const DriverFoundationShell({
     super.key,
     required this.config,
-    this.homeRepository = const DemoDriverHomeRepository(),
+    this.homeRepository,
+    this.availabilityRepository,
     this.locationRepository,
     this.eligibilityRepository,
     this.acceptanceRepository,
@@ -103,6 +106,12 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   late final DriverRuntimeRecoveryStore _recoveryStore =
       widget.recoveryStore ?? SharedPreferencesDriverRuntimeRecoveryStore();
+
+  late final DriverHomeRepository _homeRepository = widget.homeRepository ??
+      DriverHomeRepositoryFactory.create(widget.config);
+  late final DriverAvailabilityRepository _availabilityRepository =
+      widget.availabilityRepository ??
+          DriverAvailabilityRepositoryFactory.create(widget.config);
 
   late final bool _ownsBackgroundLocationController =
       widget.backgroundLocationController == null;
@@ -636,7 +645,8 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         config: widget.config,
         completedOrderNumber: _completedOrderNumber,
         unreadNotificationsOverride: _homeSnapshot?.unreadNotifications,
-        repository: widget.homeRepository,
+        repository: _homeRepository,
+        availabilityRepository: _availabilityRepository,
         eligibilityRepository: _eligibilityRepository,
         onSnapshotChanged: _receiveHomeSnapshot,
         onResumeActiveDelivery: _openActiveDelivery,
