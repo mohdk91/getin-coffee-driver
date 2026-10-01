@@ -171,6 +171,72 @@ class ApiDriverOrderEligibilityRepository
         }
       }
 
+      final existingOrderIds = decisions
+          .map((decision) => decision.order.apiOrderId)
+          .whereType<int>()
+          .toSet();
+      final offersEnvelope = await context.apiClient.getJson(
+        '/v1/driver/order-offers',
+        authenticated: true,
+      );
+      for (final raw in DriverApiContext.dataList(offersEnvelope)) {
+        if (raw is! Map) continue;
+        final offer = Map<String, dynamic>.from(raw);
+        final status = offer['status']?.toString().toLowerCase() ?? '';
+        if (status == 'rejected' ||
+            status == 'expired' ||
+            status == 'accepted') {
+          continue;
+        }
+        final orderRaw = offer['order'];
+        if (orderRaw is! Map) continue;
+        final order = Map<String, dynamic>.from(orderRaw);
+        final orderId = (order['id'] as num?)?.toInt();
+        if (orderId != null && existingOrderIds.contains(orderId)) continue;
+        final branch = order['branch'] is Map
+            ? Map<String, dynamic>.from(order['branch'] as Map)
+            : const <String, dynamic>{};
+        final destination = order['destination'] is Map
+            ? Map<String, dynamic>.from(order['destination'] as Map)
+            : const <String, dynamic>{};
+        final candidate = DriverOrderCandidate(
+          apiOrderId: orderId,
+          apiOfferId: (offer['id'] as num?)?.toInt(),
+          orderNumber: order['order_number']?.toString() ?? '',
+          pickupBranch: branch['name']?.toString() ?? 'Branch',
+          region: contextSnapshot.region,
+          zone: contextSnapshot.zone,
+          destinationArea: destination['area']?.toString() ??
+              destination['city']?.toString() ??
+              'Delivery area',
+          distanceToBranchKm: 0,
+          deliveryDistanceKm: 0,
+          estimatedDurationMinutes: 0,
+          bagCount: 1,
+          estimatedDriverEarning: 0,
+          currencyCode: order['currency']?.toString() ?? 'EGP',
+          allowedVehicleTypes: const <String>[],
+          isAvailable: true,
+        );
+        decisions.add(
+          DriverOrderEligibilityDecision(
+            order: candidate,
+            checks: const <DriverEligibilityRuleCheck>[
+              DriverEligibilityRuleCheck(
+                rule: DriverOrderEligibilityRule.driverApproved,
+                passed: true,
+                detail: 'Laravel offered this order directly to the driver.',
+              ),
+              DriverEligibilityRuleCheck(
+                rule: DriverOrderEligibilityRule.orderAvailable,
+                passed: true,
+                detail: 'Offer is active on the server.',
+              ),
+            ],
+          ),
+        );
+      }
+
       return DriverOrderEligibilityLoadResult.success(
         DriverOrderEligibilitySnapshot(
           context: contextSnapshot,
