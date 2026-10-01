@@ -6,10 +6,12 @@ void main() {
   test('Task 19 demo PIN validates order customer driver code and one-time use',
       () async {
     final repository = DemoDriverDeliveryPinRepository();
-    final load = await repository.loadChallenge(orderNumber: 'GD-2481');
+    final load = await repository.loadChallenge(
+        apiOrderId: null, orderNumber: 'GD-2481');
     final challenge = load.challenge!;
 
     final success = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: 'GD-2481',
       customerReference: challenge.customerReference,
@@ -23,6 +25,7 @@ void main() {
     expect(success.receipt?.isDemo, isTrue);
 
     final reused = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: 'GD-2481',
       customerReference: challenge.customerReference,
@@ -39,10 +42,12 @@ void main() {
 
   test('Task 19 rejects wrong assigned driver binding', () async {
     final repository = DemoDriverDeliveryPinRepository();
-    final load = await repository.loadChallenge(orderNumber: 'GD-2481');
+    final load = await repository.loadChallenge(
+        apiOrderId: null, orderNumber: 'GD-2481');
     final challenge = load.challenge!;
 
     final result = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -65,6 +70,7 @@ void main() {
     );
 
     final result = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -78,7 +84,8 @@ void main() {
 
   test('Task 19 production repository never fakes a verification', () async {
     const repository = UnavailableDriverDeliveryPinRepository();
-    final load = await repository.loadChallenge(orderNumber: 'GD-2481');
+    final load = await repository.loadChallenge(
+        apiOrderId: null, orderNumber: 'GD-2481');
 
     expect(load.isSuccess, isFalse);
     expect(load.errorMessage, contains('will not invent'));

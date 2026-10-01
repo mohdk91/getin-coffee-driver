@@ -3,6 +3,7 @@ import '../../location/domain/driver_location_models.dart';
 enum DriverBranchRouteDataSource { demo, api }
 
 class DriverBranchRouteInfo {
+  final int? apiOrderId;
   final String orderNumber;
   final String branchName;
   final String branchImageAsset;
@@ -16,6 +17,7 @@ class DriverBranchRouteInfo {
   final DateTime updatedAt;
 
   const DriverBranchRouteInfo({
+    this.apiOrderId,
     required this.orderNumber,
     required this.branchName,
     required this.branchImageAsset,

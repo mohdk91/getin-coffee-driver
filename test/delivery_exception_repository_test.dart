@@ -9,6 +9,7 @@ void main() {
     const repository = DemoDriverDeliveryExceptionRepository();
 
     final result = await repository.reportException(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       reason: DriverDeliveryExceptionReason.customerUnavailable,
       note: 'No response at entrance.',
@@ -25,6 +26,7 @@ void main() {
     const repository = DemoDriverDeliveryExceptionRepository();
 
     final result = await repository.reportException(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       reason: DriverDeliveryExceptionReason.returnToBranch,
       note: '',
@@ -36,12 +38,14 @@ void main() {
   test('Task 23 demo report persists for the active order', () async {
     const repository = DemoDriverDeliveryExceptionRepository();
     await repository.reportException(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       reason: DriverDeliveryExceptionReason.safetyIssue,
       note: 'Unsafe access point.',
     );
 
     final restored = await repository.loadActiveException(
+      apiOrderId: null,
       orderNumber: 'gd-2481',
     );
 
@@ -53,6 +57,7 @@ void main() {
     const repository = UnavailableDriverDeliveryExceptionRepository();
 
     final result = await repository.reportException(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       reason: DriverDeliveryExceptionReason.wrongAddress,
       note: '',

@@ -58,6 +58,7 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
     }
 
     final result = await _repository.loadChallenge(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
     );
     if (!mounted) return;
@@ -69,6 +70,15 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
   }
 
   Future<void> _scanDemoQr() async {
+    if (_repository.source != DriverDeliveryQrDataSource.demo) {
+      if (!mounted) return;
+      setState(() {
+        _verificationError =
+            'Production QR verification requires a real scanned customer token. Use the delivery PIN until camera scanning is enabled.';
+        _failureReason = DriverDeliveryQrFailureReason.cameraUnavailable;
+      });
+      return;
+    }
     final challenge = _challenge;
     if (challenge == null || _verifying || _outcome?.receipt != null) return;
     if (!driverCriticalActionAllowed(widget.criticalActionGate)) {
@@ -87,6 +97,7 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
     });
 
     final result = await _repository.verifyQr(
+      apiOrderId: widget.delivery.apiOrderId,
       challenge: challenge,
       orderNumber: widget.delivery.orderNumber,
       customerReference: challenge.customerReference,

@@ -22,6 +22,7 @@ enum DriverGpsState {
 }
 
 class DriverActiveDeliverySummary {
+  final int? apiOrderId;
   final String orderNumber;
   final String status;
   final String pickupBranch;
@@ -30,6 +31,7 @@ class DriverActiveDeliverySummary {
   final DriverDeliveryState? state;
 
   const DriverActiveDeliverySummary({
+    this.apiOrderId,
     required this.orderNumber,
     required this.status,
     required this.pickupBranch,
@@ -42,6 +44,7 @@ class DriverActiveDeliverySummary {
       state ?? driverDeliveryStateFromStatus(status);
 
   DriverActiveDeliverySummary copyWith({
+    int? apiOrderId,
     String? status,
     String? pickupBranch,
     String? destinationArea,
@@ -49,6 +52,7 @@ class DriverActiveDeliverySummary {
     DriverDeliveryState? state,
   }) {
     return DriverActiveDeliverySummary(
+      apiOrderId: apiOrderId ?? this.apiOrderId,
       orderNumber: orderNumber,
       status: status ?? this.status,
       pickupBranch: pickupBranch ?? this.pickupBranch,

@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../../eligibility/domain/driver_order_eligibility_models.dart';
 import '../domain/driver_order_acceptance_models.dart';
 
@@ -12,6 +14,70 @@ abstract interface class DriverOrderAcceptanceRepository {
     required DriverOrderCandidate order,
     required String driverId,
   });
+}
+
+class ApiDriverOrderAcceptanceRepository
+    implements DriverOrderAcceptanceRepository {
+  final DriverApiContext context;
+
+  const ApiDriverOrderAcceptanceRepository(this.context);
+
+  @override
+  DriverOrderAcceptanceDataSource get source =>
+      DriverOrderAcceptanceDataSource.api;
+
+  @override
+  Future<DriverOrderAcceptanceResult> accept({
+    required DriverOrderCandidate order,
+    required String driverId,
+  }) async {
+    final orderId = order.apiOrderId;
+    final offerId = order.apiOfferId;
+    if (orderId == null && offerId == null) {
+      return const DriverOrderAcceptanceResult(
+        outcome: DriverOrderAcceptanceOutcome.serverFailure,
+        message:
+            'This live order is missing its Laravel identifier. Refresh available orders and retry.',
+      );
+    }
+
+    final path = offerId != null
+        ? '/v1/driver/order-offers/$offerId/accept'
+        : '/v1/driver/orders/$orderId/accept';
+    final idempotencyKey = offerId != null
+        ? 'driver-offer-accept-$offerId'
+        : 'driver-order-accept-$orderId';
+
+    try {
+      final envelope = await context.apiClient.requestJson(
+        'POST',
+        path,
+        authenticated: true,
+        headers: <String, String>{'Idempotency-Key': idempotencyKey},
+      );
+      final data = DriverApiContext.dataMap(envelope);
+      final acceptedAt =
+          DateTime.tryParse(data['accepted_at']?.toString() ?? '');
+      return DriverOrderAcceptanceResult(
+        outcome: DriverOrderAcceptanceOutcome.accepted,
+        message:
+            envelope['message']?.toString() ?? 'Delivery accepted by Getin.',
+        lockToken: data['assignment_id']?.toString(),
+        acceptedAt: acceptedAt ?? DateTime.now(),
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 || error.statusCode == 404) {
+        return DriverOrderAcceptanceResult(
+          outcome: DriverOrderAcceptanceOutcome.alreadyTaken,
+          message: error.message,
+        );
+      }
+      return DriverOrderAcceptanceResult(
+        outcome: DriverOrderAcceptanceOutcome.serverFailure,
+        message: error.message,
+      );
+    }
+  }
 }
 
 class DemoOrderLockRecord {
@@ -100,8 +166,6 @@ class DemoDriverOrderAcceptanceRepository
       );
     }
 
-    // The in-memory lock acquisition is synchronous. Two demo drivers sharing
-    // this store cannot both acquire the same order in the same event loop.
     final existing = lockStore.ownerOf(order.orderNumber);
     if (existing != null && existing.driverId != driverId) {
       await Future<void>.delayed(responseDelay);
@@ -159,12 +223,15 @@ class UnavailableDriverOrderAcceptanceRepository
 class DriverOrderAcceptanceRepositoryFactory {
   const DriverOrderAcceptanceRepositoryFactory._();
 
-  static DriverOrderAcceptanceRepository create(AppConfig config) {
-    return switch (config.environment) {
-      AppEnvironment.development => DemoDriverOrderAcceptanceRepository(),
-      AppEnvironment.staging ||
-      AppEnvironment.production =>
-        const UnavailableDriverOrderAcceptanceRepository(),
-    };
+  static DriverOrderAcceptanceRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.environment == AppEnvironment.development) {
+      return DemoDriverOrderAcceptanceRepository();
+    }
+    return ApiDriverOrderAcceptanceRepository(
+      context ?? DriverApiContext.create(config),
+    );
   }
 }

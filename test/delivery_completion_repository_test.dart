@@ -21,6 +21,7 @@ void main() {
     const repository = DemoDriverDeliveryCompletionRepository();
 
     final result = await repository.completeDelivery(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       verification: _verification(),
     );
@@ -40,6 +41,7 @@ void main() {
     const repository = DemoDriverDeliveryCompletionRepository();
 
     final result = await repository.completeDelivery(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       verification: _verification(orderNumber: 'GD-9999'),
     );
@@ -56,6 +58,7 @@ void main() {
     const repository = UnavailableDriverDeliveryCompletionRepository();
 
     final result = await repository.completeDelivery(
+      apiOrderId: null,
       orderNumber: 'GD-2481',
       verification: _verification(),
     );

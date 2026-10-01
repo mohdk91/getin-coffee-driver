@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
 import '../../location/domain/driver_location_models.dart';
+import '../../location/data/driver_location_sync_repository.dart';
 import '../domain/driver_background_location_models.dart';
 import 'driver_background_location_policy_repository.dart';
 import 'driver_background_location_runner.dart';
@@ -12,6 +13,7 @@ import 'driver_background_location_runner.dart';
 class DriverBackgroundLocationController extends ChangeNotifier {
   final DriverBackgroundLocationPolicyRepository policyRepository;
   final DriverBackgroundLocationRunner runner;
+  final DriverLocationSyncRepository locationSyncRepository;
 
   DriverBackgroundTrackingSnapshot _snapshot =
       DriverBackgroundTrackingSnapshot.initial();
@@ -24,6 +26,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
   DriverBackgroundLocationController({
     required this.policyRepository,
     required this.runner,
+    this.locationSyncRepository = const NoopDriverLocationSyncRepository(),
   });
 
   DriverBackgroundTrackingSnapshot get snapshot => _snapshot;
@@ -136,6 +139,10 @@ class DriverBackgroundLocationController extends ChangeNotifier {
               updatedAt: DateTime.now(),
             ),
           );
+          if (decision.serverSyncAllowed) {
+            unawaited(
+                locationSyncRepository.sync(fix).catchError((Object _) {}));
+          }
         },
         onError: (Object _) {
           if (_disposed || generation != _generation) return;
@@ -247,6 +254,8 @@ class DriverBackgroundLocationControllerFactory {
       runner: useDeviceRunner
           ? const DeviceDriverBackgroundLocationRunner()
           : const DemoDriverBackgroundLocationRunner(),
+      locationSyncRepository:
+          DriverLocationSyncRepositoryFactory.create(config),
     );
   }
 }

@@ -162,6 +162,7 @@ class _DriverDeliveryNavigationScreenState
 
   Future<void> _loadExistingException() async {
     final receipt = await _exceptionRepository.loadActiveException(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
     );
     if (!mounted || receipt == null) return;
@@ -187,6 +188,7 @@ class _DriverDeliveryNavigationScreenState
 
     final result = await _destinationRepository.load(
       orderNumber: widget.delivery.orderNumber,
+      apiOrderId: widget.delivery.apiOrderId,
     );
     if (!mounted) return;
 
@@ -210,12 +212,32 @@ class _DriverDeliveryNavigationScreenState
     return false;
   }
 
+  Future<bool> _confirmArrivalAtCustomer() async {
+    if (_destinationRepository.source ==
+        DriverDeliveryDestinationDataSource.demo) {
+      return true;
+    }
+    final error = await _destinationRepository.arriveAtCustomer(
+      apiOrderId: widget.delivery.apiOrderId,
+    );
+    if (!mounted) return false;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), behavior: SnackBarBehavior.floating),
+      );
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _openDeliveryPinVerification() async {
     if (!_ensureCriticalActionAvailable(
       DriverCriticalAction.customerVerification,
     )) {
       return;
     }
+    if (!await _confirmArrivalAtCustomer()) return;
+    if (!mounted) return;
     if (!_advanceTimeline(
       DriverDeliveryState.verificationPending,
       source: 'customer_verification',
@@ -245,6 +267,8 @@ class _DriverDeliveryNavigationScreenState
     )) {
       return;
     }
+    if (!await _confirmArrivalAtCustomer()) return;
+    if (!mounted) return;
     if (!_advanceTimeline(
       DriverDeliveryState.verificationPending,
       source: 'customer_verification',

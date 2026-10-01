@@ -10,12 +10,14 @@ import 'domain/driver_order_contents_models.dart';
 class DriverOrderContentsScreen extends StatefulWidget {
   final AppConfig config;
   final String orderNumber;
+  final int? apiOrderId;
   final DriverOrderContentsRepository? repository;
 
   const DriverOrderContentsScreen({
     super.key,
     required this.config,
     required this.orderNumber,
+    this.apiOrderId,
     this.repository,
   });
 

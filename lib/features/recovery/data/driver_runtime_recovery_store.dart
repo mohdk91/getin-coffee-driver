@@ -66,7 +66,7 @@ class SharedPreferencesDriverRuntimeRecoveryStore
     await preferences.setString(
       _storageKey,
       jsonEncode(<String, Object?>{
-        'version': 1,
+        'version': 2,
         'activeDelivery': _encodeActiveDelivery(snapshot.activeDelivery),
         'completedOrderNumber': snapshot.completedOrderNumber,
         'lastSuccessfulSyncAt':
@@ -78,8 +78,11 @@ class SharedPreferencesDriverRuntimeRecoveryStore
   static Map<String, Object?>? _encodeActiveDelivery(
     DriverActiveDeliverySummary? delivery,
   ) {
-    if (delivery == null) return null;
+    if (delivery == null) {
+      return null;
+    }
     return <String, Object?>{
+      'apiOrderId': delivery.apiOrderId,
       'orderNumber': delivery.orderNumber,
       'status': delivery.status,
       'pickupBranch': delivery.pickupBranch,
@@ -90,7 +93,9 @@ class SharedPreferencesDriverRuntimeRecoveryStore
   }
 
   static DriverActiveDeliverySummary? _decodeActiveDelivery(Object? value) {
-    if (value is! Map<String, dynamic>) return null;
+    if (value is! Map<String, dynamic>) {
+      return null;
+    }
 
     final orderNumber = _stringOrNull(value['orderNumber']);
     final status = _stringOrNull(value['status']);
@@ -114,7 +119,10 @@ class SharedPreferencesDriverRuntimeRecoveryStore
             orElse: () => driverDeliveryStateFromStatus(status),
           );
 
+    final apiOrderId = value['apiOrderId'];
+
     return DriverActiveDeliverySummary(
+      apiOrderId: apiOrderId is num ? apiOrderId.toInt() : null,
       orderNumber: orderNumber,
       status: status,
       pickupBranch: pickupBranch,
@@ -125,7 +133,9 @@ class SharedPreferencesDriverRuntimeRecoveryStore
   }
 
   static String? _stringOrNull(Object? value) {
-    if (value is! String) return null;
+    if (value is! String) {
+      return null;
+    }
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }

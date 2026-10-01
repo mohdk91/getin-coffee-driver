@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_background_location_models.dart';
 
 enum DriverBackgroundLocationPolicySource { demo, api }
@@ -27,6 +29,57 @@ abstract interface class DriverBackgroundLocationPolicyRepository {
   DriverBackgroundLocationPolicySource get source;
 
   Future<DriverBackgroundLocationPolicyResult> loadPolicy();
+}
+
+class ApiDriverBackgroundLocationPolicyRepository
+    implements DriverBackgroundLocationPolicyRepository {
+  final DriverApiContext context;
+
+  const ApiDriverBackgroundLocationPolicyRepository(this.context);
+
+  @override
+  DriverBackgroundLocationPolicySource get source =>
+      DriverBackgroundLocationPolicySource.api;
+
+  @override
+  Future<DriverBackgroundLocationPolicyResult> loadPolicy() async {
+    try {
+      final data = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/location/policy',
+          authenticated: true,
+        ),
+      );
+      final tracking = data['tracking'] is Map
+          ? Map<String, dynamic>.from(data['tracking'] as Map)
+          : const <String, dynamic>{};
+
+      final backgroundEnabled = tracking['background_enabled'] != false;
+      final onlineOnly = tracking['background_online_only'] != false;
+      final foregroundSeconds =
+          (tracking['foreground_interval_seconds'] as num?)?.toInt() ?? 15;
+      final backgroundSeconds =
+          (tracking['background_interval_seconds'] as num?)?.toInt() ?? 60;
+      final distance = (tracking['min_distance_meters'] as num?)?.toInt() ?? 25;
+
+      return DriverBackgroundLocationPolicyResult.success(
+        DriverBackgroundLocationPolicy(
+          version: 'laravel-location-policy-v1',
+          trackWhenOnline: backgroundEnabled && onlineOnly,
+          trackDuringActiveDelivery: backgroundEnabled,
+          onlineInterval: Duration(seconds: backgroundSeconds.clamp(5, 3600)),
+          onlineDistanceFilterMeters: distance.clamp(0, 5000),
+          activeDeliveryInterval:
+              Duration(seconds: foregroundSeconds.clamp(5, 3600)),
+          activeDeliveryDistanceFilterMeters: distance.clamp(0, 5000),
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverBackgroundLocationPolicyResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverBackgroundLocationPolicyResult.failure(error.message);
+    }
+  }
 }
 
 class DemoDriverBackgroundLocationPolicyRepository
@@ -72,9 +125,15 @@ class UnavailableDriverBackgroundLocationPolicyRepository
 class DriverBackgroundLocationPolicyRepositoryFactory {
   const DriverBackgroundLocationPolicyRepositoryFactory._();
 
-  static DriverBackgroundLocationPolicyRepository create(AppConfig config) {
-    return config.environment == AppEnvironment.development
-        ? const DemoDriverBackgroundLocationPolicyRepository()
-        : const UnavailableDriverBackgroundLocationPolicyRepository();
+  static DriverBackgroundLocationPolicyRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.environment == AppEnvironment.development) {
+      return const DemoDriverBackgroundLocationPolicyRepository();
+    }
+    return ApiDriverBackgroundLocationPolicyRepository(
+      context ?? DriverApiContext.create(config),
+    );
   }
 }

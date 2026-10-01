@@ -50,6 +50,7 @@ class _DriverStartDeliveryScreenState extends State<DriverStartDeliveryScreen> {
     });
 
     final result = await _repository.startDelivery(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
       latitude: widget.route.driverCoordinates.latitude,
       longitude: widget.route.driverCoordinates.longitude,

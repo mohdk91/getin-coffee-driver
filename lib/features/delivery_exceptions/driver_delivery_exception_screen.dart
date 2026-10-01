@@ -53,6 +53,7 @@ class _DriverDeliveryExceptionScreenState
     });
 
     final result = await _repository.reportException(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
       reason: reason,
       note: _noteController.text,
