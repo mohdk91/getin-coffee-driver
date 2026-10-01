@@ -187,6 +187,7 @@ class _DriverDeliveryNavigationScreenState
 
     final result = await _destinationRepository.load(
       orderNumber: widget.delivery.orderNumber,
+      apiOrderId: widget.delivery.apiOrderId,
     );
     if (!mounted) return;
 
