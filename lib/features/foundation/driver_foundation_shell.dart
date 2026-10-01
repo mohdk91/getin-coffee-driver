@@ -397,6 +397,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     setState(() {
       _activeTimeline = timeline;
       _locallyAcceptedDelivery = DriverActiveDeliverySummary(
+        apiOrderId: acceptedOrder.order.apiOrderId,
         orderNumber: acceptedOrder.order.orderNumber,
         status: DriverDeliveryState.goingToBranch.label,
         pickupBranch: acceptedOrder.order.pickupBranch,
