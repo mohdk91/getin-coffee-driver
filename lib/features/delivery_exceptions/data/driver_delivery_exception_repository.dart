@@ -35,9 +35,55 @@ class ApiDriverDeliveryExceptionRepository
   DriverDeliveryExceptionDataSource get source =>
       DriverDeliveryExceptionDataSource.api;
   @override
-  Future<DriverDeliveryExceptionReceipt?> loadActiveException(
-          {required int? apiOrderId, required String orderNumber}) async =>
-      null;
+  Future<DriverDeliveryExceptionReceipt?> loadActiveException({
+    required int? apiOrderId,
+    required String orderNumber,
+  }) async {
+    if (apiOrderId == null) {
+      return null;
+    }
+    try {
+      final envelope = await context.apiClient.getJson(
+        '/v1/driver/orders/$apiOrderId/exceptions',
+        authenticated: true,
+      );
+      final items = DriverApiContext.dataList(envelope);
+      for (final raw in items.reversed) {
+        if (raw is! Map) {
+          continue;
+        }
+        final item = Map<String, dynamic>.from(raw);
+        final status = item['status']?.toString();
+        if (status == 'resolved' || status == 'closed') {
+          continue;
+        }
+        final reason = _reasonFromExceptionCode(item['code']?.toString());
+        if (reason == null) {
+          continue;
+        }
+        return DriverDeliveryExceptionReceipt(
+          auditId: item['id']?.toString() ?? 'exception-$apiOrderId',
+          orderNumber: orderNumber,
+          driverReference: 'server-authenticated-driver',
+          reason: reason,
+          note: item['description']?.toString() ?? '',
+          reportedAt:
+              DateTime.tryParse(item['occurred_at']?.toString() ?? '') ??
+                  DateTime.now(),
+          latitude: null,
+          longitude: null,
+          recommendedOrderState: reason.recommendedOrderState,
+          serverAcknowledged: true,
+          isDemo: false,
+        );
+      }
+      return null;
+    } on ApiException {
+      return null;
+    } on FormatException {
+      return null;
+    }
+  }
 
   @override
   Future<DriverDeliveryExceptionResult> reportException(
@@ -51,6 +97,23 @@ class ApiDriverDeliveryExceptionRepository
               'The active delivery is missing its Laravel order identifier.');
     }
     try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/orders/$apiOrderId/exceptions',
+        authenticated: true,
+        body: <String, Object?>{
+          'category': _exceptionCategory(reason),
+          'code': _exceptionCode(reason),
+          'title': reason.label,
+          'description': note.trim().isEmpty ? reason.description : note.trim(),
+          'metadata': <String, Object?>{'source': 'driver_app'},
+        },
+        headers: <String, String>{
+          'Idempotency-Key':
+              'driver-exception-$apiOrderId-${_exceptionCode(reason)}',
+        },
+      );
+
       if (reason == DriverDeliveryExceptionReason.returnToBranch) {
         await context.apiClient.requestJson(
           'POST',
@@ -148,6 +211,46 @@ class ApiDriverDeliveryExceptionRepository
     }
   }
 
+  static String _exceptionCategory(DriverDeliveryExceptionReason reason) =>
+      switch (reason) {
+        DriverDeliveryExceptionReason.customerUnavailable => 'customer',
+        DriverDeliveryExceptionReason.wrongAddress => 'address',
+        DriverDeliveryExceptionReason.customerRefused => 'customer',
+        DriverDeliveryExceptionReason.cannotAccessBuilding => 'address',
+        DriverDeliveryExceptionReason.damagedOrder => 'order',
+        DriverDeliveryExceptionReason.safetyIssue => 'safety',
+        DriverDeliveryExceptionReason.supportRequired => 'other',
+        DriverDeliveryExceptionReason.returnToBranch => 'branch',
+      };
+
+  static String _exceptionCode(DriverDeliveryExceptionReason reason) =>
+      switch (reason) {
+        DriverDeliveryExceptionReason.customerUnavailable =>
+          'customer_unavailable',
+        DriverDeliveryExceptionReason.wrongAddress => 'wrong_address',
+        DriverDeliveryExceptionReason.customerRefused => 'customer_refused',
+        DriverDeliveryExceptionReason.cannotAccessBuilding => 'access_issue',
+        DriverDeliveryExceptionReason.damagedOrder => 'damaged_order',
+        DriverDeliveryExceptionReason.safetyIssue => 'safety_issue',
+        DriverDeliveryExceptionReason.supportRequired => 'support_required',
+        DriverDeliveryExceptionReason.returnToBranch => 'return_to_branch',
+      };
+
+  static DriverDeliveryExceptionReason? _reasonFromExceptionCode(
+          String? code) =>
+      switch (code) {
+        'customer_unavailable' =>
+          DriverDeliveryExceptionReason.customerUnavailable,
+        'wrong_address' => DriverDeliveryExceptionReason.wrongAddress,
+        'customer_refused' => DriverDeliveryExceptionReason.customerRefused,
+        'access_issue' => DriverDeliveryExceptionReason.cannotAccessBuilding,
+        'damaged_order' => DriverDeliveryExceptionReason.damagedOrder,
+        'safety_issue' => DriverDeliveryExceptionReason.safetyIssue,
+        'support_required' => DriverDeliveryExceptionReason.supportRequired,
+        'return_to_branch' => DriverDeliveryExceptionReason.returnToBranch,
+        _ => null,
+      };
+
   static String _failureCode(DriverDeliveryExceptionReason reason) =>
       switch (reason) {
         DriverDeliveryExceptionReason.customerUnavailable =>
@@ -207,20 +310,29 @@ class DemoDriverDeliveryExceptionRepository
 class UnavailableDriverDeliveryExceptionRepository
     implements DriverDeliveryExceptionRepository {
   const UnavailableDriverDeliveryExceptionRepository();
+
   @override
   DriverDeliveryExceptionDataSource get source =>
       DriverDeliveryExceptionDataSource.api;
+
   @override
-  Future<DriverDeliveryExceptionReceipt?> loadActiveException(
-          {required int? apiOrderId, required String orderNumber}) async =>
-      null;
+  Future<DriverDeliveryExceptionReceipt?> loadActiveException({
+    required int? apiOrderId,
+    required String orderNumber,
+  }) async {
+    return null;
+  }
+
   @override
-  Future<DriverDeliveryExceptionResult> reportException(
-          {required int? apiOrderId,
-          required String orderNumber,
-          required DriverDeliveryExceptionReason reason,
-          required String note}) async =>
-      const DriverDeliveryExceptionResult.failure(
-          message:
-              'Could not confirm this exception with Getin. The order status has not changed. Retry or contact operations.');
+  Future<DriverDeliveryExceptionResult> reportException({
+    required int? apiOrderId,
+    required String orderNumber,
+    required DriverDeliveryExceptionReason reason,
+    required String note,
+  }) async {
+    return const DriverDeliveryExceptionResult.failure(
+      message:
+          'Could not confirm this exception with Getin. The order status has not changed. Retry or contact operations.',
+    );
+  }
 }
