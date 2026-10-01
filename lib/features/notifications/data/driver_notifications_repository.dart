@@ -1,24 +1,147 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_notification_models.dart';
 
 abstract interface class DriverNotificationsRepository {
   DriverNotificationDataSource get source;
-
   Future<DriverNotificationsLoadResult> loadNotifications();
-
   Future<DriverNotificationMutationResult> markRead(String notificationId);
-
   Future<DriverNotificationMutationResult> markAllRead();
 }
 
 class DriverNotificationsRepositoryFactory {
   DriverNotificationsRepositoryFactory._();
-
-  static DriverNotificationsRepository create(AppConfig config) {
+  static DriverNotificationsRepository create(AppConfig config,
+      {DriverApiContext? context}) {
+    if (config.isApiConfigured) {
+      return ApiDriverNotificationsRepository(
+          context ?? DriverApiContext.create(config));
+    }
     return config.environment == AppEnvironment.development
         ? DemoDriverNotificationsRepository()
         : const UnavailableDriverNotificationsRepository();
+  }
+}
+
+class ApiDriverNotificationsRepository
+    implements DriverNotificationsRepository {
+  final DriverApiContext context;
+  const ApiDriverNotificationsRepository(this.context);
+
+  @override
+  DriverNotificationDataSource get source => DriverNotificationDataSource.api;
+
+  @override
+  Future<DriverNotificationsLoadResult> loadNotifications() async {
+    try {
+      final envelope = await context.apiClient.getJson(
+        '/v1/driver/notifications',
+        query: const <String, Object?>{'per_page': 50},
+        authenticated: true,
+      );
+      final items = DriverApiContext.nestedItems(envelope)
+          .whereType<Map>()
+          .map((raw) => _notification(Map<String, dynamic>.from(raw)))
+          .toList(growable: false);
+      return DriverNotificationsLoadResult.success(
+        DriverNotificationsSnapshot(items: items, updatedAt: DateTime.now()),
+      );
+    } on ApiException catch (error) {
+      return DriverNotificationsLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverNotificationsLoadResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverNotificationMutationResult> markRead(
+      String notificationId) async {
+    final id = int.tryParse(notificationId);
+    if (id == null) {
+      return const DriverNotificationMutationResult.failure(
+          'Notification identifier is invalid.');
+    }
+    try {
+      await context.apiClient
+          .postJson('/v1/driver/notifications/$id/read', authenticated: true);
+      return _refreshMutation();
+    } on ApiException catch (error) {
+      return DriverNotificationMutationResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverNotificationMutationResult> markAllRead() async {
+    try {
+      await context.apiClient
+          .postJson('/v1/driver/notifications/read-all', authenticated: true);
+      return _refreshMutation();
+    } on ApiException catch (error) {
+      return DriverNotificationMutationResult.failure(error.message);
+    }
+  }
+
+  Future<DriverNotificationMutationResult> _refreshMutation() async {
+    final refreshed = await loadNotifications();
+    if (!refreshed.isSuccess) {
+      return DriverNotificationMutationResult.failure(
+        refreshed.errorMessage ?? 'Could not refresh notifications.',
+      );
+    }
+    return DriverNotificationMutationResult.success(refreshed.snapshot!);
+  }
+
+  DriverNotificationItem _notification(Map<String, dynamic> raw) {
+    final data = raw['data'] is Map
+        ? Map<String, dynamic>.from(raw['data'] as Map)
+        : const <String, dynamic>{};
+    return DriverNotificationItem(
+      id: raw['id']?.toString() ?? '',
+      category: _category(raw['type']?.toString() ?? 'system'),
+      title: raw['title']?.toString() ?? 'Getin notification',
+      message: raw['body']?.toString() ?? '',
+      createdAt: DateTime.tryParse(raw['created_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      isRead: raw['is_read'] == true,
+      orderNumber:
+          data['order_number']?.toString() ?? data['orderNumber']?.toString(),
+    );
+  }
+
+  DriverNotificationCategory _category(String value) {
+    final n = value.toLowerCase().replaceAll('-', '_');
+    if (n.contains('new_order') || n.contains('order_available')) {
+      return DriverNotificationCategory.newOrder;
+    }
+    if (n.contains('accepted_elsewhere') || n.contains('offer_taken')) {
+      return DriverNotificationCategory.orderAcceptedElsewhere;
+    }
+    if (n.contains('branch_ready') || n.contains('pickup_ready')) {
+      return DriverNotificationCategory.branchReady;
+    }
+    if (n.contains('customer_message') || n.contains('chat')) {
+      return DriverNotificationCategory.customerMessage;
+    }
+    if (n.contains('cancel')) {
+      return DriverNotificationCategory.cancellation;
+    }
+    if (n.contains('verification')) {
+      return DriverNotificationCategory.deliveryVerificationIssue;
+    }
+    if (n.contains('earning') ||
+        n.contains('payout') ||
+        n.contains('commission')) {
+      return DriverNotificationCategory.earnings;
+    }
+    if (n.contains('document') && n.contains('expir')) {
+      return DriverNotificationCategory.documentExpiry;
+    }
+    if (n.contains('order')) {
+      return DriverNotificationCategory.orderUpdated;
+    }
+    return DriverNotificationCategory.system;
   }
 }
 
