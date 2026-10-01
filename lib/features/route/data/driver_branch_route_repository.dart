@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../../home/domain/driver_home_models.dart';
 import '../../location/domain/driver_location_models.dart';
 import '../domain/driver_branch_route_models.dart';
@@ -15,10 +17,101 @@ abstract interface class DriverBranchRouteRepository {
 class DriverBranchRouteRepositoryFactory {
   DriverBranchRouteRepositoryFactory._();
 
-  static DriverBranchRouteRepository create(AppConfig config) {
-    return config.environment == AppEnvironment.development
-        ? const DemoDriverBranchRouteRepository()
-        : const UnavailableDriverBranchRouteRepository();
+  static DriverBranchRouteRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.environment == AppEnvironment.development) {
+      return const DemoDriverBranchRouteRepository();
+    }
+    return ApiDriverBranchRouteRepository(
+        context ?? DriverApiContext.create(config));
+  }
+}
+
+class ApiDriverBranchRouteRepository implements DriverBranchRouteRepository {
+  final DriverApiContext context;
+
+  const ApiDriverBranchRouteRepository(this.context);
+
+  @override
+  DriverBranchRouteDataSource get source => DriverBranchRouteDataSource.api;
+
+  @override
+  Future<DriverBranchRouteLoadResult> load({
+    required DriverActiveDeliverySummary delivery,
+  }) async {
+    final orderId = delivery.apiOrderId;
+    if (orderId == null) {
+      return const DriverBranchRouteLoadResult.failure(
+        'The active delivery is missing its Laravel order identifier. Refresh orders and try again.',
+      );
+    }
+    try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/orders/$orderId/going-to-branch',
+        authenticated: true,
+        headers: <String, String>{
+          'Idempotency-Key': 'driver-going-to-branch-$orderId',
+        },
+      );
+      final order = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/orders/$orderId',
+          authenticated: true,
+        ),
+      );
+      final branch = order['branch'] is Map
+          ? Map<String, dynamic>.from(order['branch'] as Map)
+          : const <String, dynamic>{};
+      final locationEnvelope = await context.apiClient.getJson(
+        '/v1/driver/location',
+        authenticated: true,
+      );
+      final rawLocation = locationEnvelope['data'];
+      final location = rawLocation is Map
+          ? Map<String, dynamic>.from(rawLocation)
+          : const <String, dynamic>{};
+      final branchLat = (branch['latitude'] as num?)?.toDouble();
+      final branchLng = (branch['longitude'] as num?)?.toDouble();
+      final driverLat = (location['latitude'] as num?)?.toDouble();
+      final driverLng = (location['longitude'] as num?)?.toDouble();
+      if (branchLat == null ||
+          branchLng == null ||
+          driverLat == null ||
+          driverLng == null) {
+        return const DriverBranchRouteLoadResult.failure(
+          'Getin does not yet have enough branch/GPS coordinates to open navigation.',
+        );
+      }
+      return DriverBranchRouteLoadResult.success(
+        DriverBranchRouteInfo(
+          orderNumber:
+              order['order_number']?.toString() ?? delivery.orderNumber,
+          branchName: branch['name']?.toString() ?? delivery.pickupBranch,
+          branchImageAsset: '',
+          branchAddress: branch['address']?.toString() ?? '',
+          branchPhoneLabel:
+              branch['phone']?.toString() ?? 'Branch contact unavailable',
+          branchCoordinates:
+              DriverCoordinates(latitude: branchLat, longitude: branchLng),
+          driverCoordinates:
+              DriverCoordinates(latitude: driverLat, longitude: driverLng),
+          etaMinutes: delivery.etaMinutes,
+          distanceKm: 0,
+          pickupInstructions: const <String>[
+            'Use the designated driver pickup area when available.',
+            'Do not confirm receipt until branch verification succeeds.',
+          ],
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverBranchRouteLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverBranchRouteLoadResult.failure(error.message);
+    }
   }
 }
 
@@ -33,75 +126,26 @@ class DemoDriverBranchRouteRepository implements DriverBranchRouteRepository {
     required DriverActiveDeliverySummary delivery,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
-
-    final branch = _branchFor(delivery.pickupBranch);
-    final distance = switch (delivery.pickupBranch.toLowerCase()) {
-      'stanley' => 2.1,
-      'gleem' => 3.4,
-      'smouha' => 5.2,
-      _ => 2.4,
-    };
-
     return DriverBranchRouteLoadResult.success(
       DriverBranchRouteInfo(
         orderNumber: delivery.orderNumber,
         branchName: delivery.pickupBranch,
-        branchImageAsset: branch.imageAsset,
-        branchAddress: branch.address,
+        branchImageAsset: 'assets/images/branches/getin_stanley.png',
+        branchAddress: 'Alexandria, Egypt',
         branchPhoneLabel: 'Branch number supplied by operations',
-        branchCoordinates: branch.coordinates,
-        driverCoordinates: const DriverCoordinates(
-          latitude: 31.24580,
-          longitude: 29.96680,
-        ),
+        branchCoordinates:
+            const DriverCoordinates(latitude: 31.2397, longitude: 29.9489),
+        driverCoordinates:
+            const DriverCoordinates(latitude: 31.24580, longitude: 29.96680),
         etaMinutes: delivery.etaMinutes,
-        distanceKm: distance,
-        pickupInstructions: const [
-          'Use the designated driver pickup area when available.',
+        distanceKm: 2.1,
+        pickupInstructions: const <String>[
           'Keep the order number ready for branch staff.',
-          'Confirm the bag count and handling notes before leaving.',
           'Do not mark the order as received until branch verification is completed.',
         ],
         updatedAt: DateTime.now(),
       ),
     );
-  }
-
-  _DemoBranchDefinition _branchFor(String branchName) {
-    return switch (branchName.toLowerCase()) {
-      'stanley' => const _DemoBranchDefinition(
-          imageAsset: 'assets/images/branches/getin_stanley.png',
-          address: 'Stanley, Alexandria, Egypt',
-          coordinates: DriverCoordinates(
-            latitude: 31.2397,
-            longitude: 29.9489,
-          ),
-        ),
-      'gleem' => const _DemoBranchDefinition(
-          imageAsset: 'assets/images/branches/getin_san_stefano.png',
-          address: 'Gleem, Alexandria, Egypt',
-          coordinates: DriverCoordinates(
-            latitude: 31.2454,
-            longitude: 29.9659,
-          ),
-        ),
-      'smouha' => const _DemoBranchDefinition(
-          imageAsset: 'assets/images/branches/getin_smouha.png',
-          address: 'Smouha, Alexandria, Egypt',
-          coordinates: DriverCoordinates(
-            latitude: 31.2156,
-            longitude: 29.9553,
-          ),
-        ),
-      _ => const _DemoBranchDefinition(
-          imageAsset: 'assets/images/branches/getin_stanley.png',
-          address: 'Alexandria, Egypt',
-          coordinates: DriverCoordinates(
-            latitude: 31.2397,
-            longitude: 29.9489,
-          ),
-        ),
-    };
   }
 }
 
@@ -117,19 +161,7 @@ class UnavailableDriverBranchRouteRepository
     required DriverActiveDeliverySummary delivery,
   }) async {
     return const DriverBranchRouteLoadResult.failure(
-      'Branch route data is not connected to the Laravel API yet. Getin will not invent a pickup address, phone number, or route in production.',
+      'Branch route data is not connected to the Laravel API yet.',
     );
   }
-}
-
-class _DemoBranchDefinition {
-  final String imageAsset;
-  final String address;
-  final DriverCoordinates coordinates;
-
-  const _DemoBranchDefinition({
-    required this.imageAsset,
-    required this.address,
-    required this.coordinates,
-  });
 }
