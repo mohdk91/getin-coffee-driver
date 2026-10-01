@@ -27,7 +27,9 @@ class DriverSupportChatScreen extends StatefulWidget {
 
   String? get orderNumber {
     final fromDelivery = delivery?.orderNumber.trim();
-    if (fromDelivery != null && fromDelivery.isNotEmpty) return fromDelivery;
+    if (fromDelivery != null && fromDelivery.isNotEmpty) {
+      return fromDelivery;
+    }
     final fromContext = contextOrderNumber?.trim();
     return fromContext == null || fromContext.isEmpty ? null : fromContext;
   }
@@ -73,9 +75,13 @@ class _DriverSupportChatScreenState extends State<DriverSupportChatScreen> {
       });
     }
 
-    final result =
-        await _repository.loadThread(orderNumber: widget.orderNumber);
-    if (!mounted) return;
+    final result = await _repository.loadThread(
+      orderNumber: widget.orderNumber,
+      apiOrderId: widget.delivery?.apiOrderId,
+    );
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -87,7 +93,9 @@ class _DriverSupportChatScreenState extends State<DriverSupportChatScreen> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      return;
+    }
     _controller.clear();
     await _sendText(text);
   }
@@ -97,9 +105,13 @@ class _DriverSupportChatScreenState extends State<DriverSupportChatScreen> {
   }
 
   Future<void> _sendText(String text) async {
-    if (_sending) return;
+    if (_sending) {
+      return;
+    }
     final clean = text.trim();
-    if (clean.isEmpty) return;
+    if (clean.isEmpty) {
+      return;
+    }
 
     setState(() {
       _sending = true;
@@ -108,13 +120,18 @@ class _DriverSupportChatScreenState extends State<DriverSupportChatScreen> {
 
     final result = await _repository.sendDriverMessage(
       orderNumber: widget.orderNumber,
+      apiOrderId: widget.delivery?.apiOrderId,
       text: clean,
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _sending = false;
-      if (result.thread != null) _thread = result.thread;
+      if (result.thread != null) {
+        _thread = result.thread;
+      }
       _errorMessage = result.errorMessage;
     });
     _scheduleScroll();
@@ -122,7 +139,9 @@ class _DriverSupportChatScreenState extends State<DriverSupportChatScreen> {
 
   void _scheduleScroll() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
+      if (!_scrollController.hasClients) {
+        return;
+      }
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 220),
@@ -389,7 +408,9 @@ class _Composer extends StatelessWidget {
                 isDense: true,
               ),
               onSubmitted: (_) {
-                if (!sending) onSend();
+                if (!sending) {
+                  onSend();
+                }
               },
             ),
           ),
