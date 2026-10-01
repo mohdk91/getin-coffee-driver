@@ -58,6 +58,8 @@ class DriverEligibilityContext {
 }
 
 class DriverOrderCandidate {
+  final int? apiOrderId;
+  final int? apiOfferId;
   final String orderNumber;
   final String pickupBranch;
   final String region;
@@ -73,6 +75,8 @@ class DriverOrderCandidate {
   final bool isAvailable;
 
   const DriverOrderCandidate({
+    this.apiOrderId,
+    this.apiOfferId,
     required this.orderNumber,
     required this.pickupBranch,
     required this.region,

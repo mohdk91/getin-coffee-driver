@@ -116,10 +116,65 @@ class ApiDriverOrderEligibilityRepository
         evaluatedAt: now,
       );
 
+      final eligible = data['eligible'] == true;
+      final decisions = <DriverOrderEligibilityDecision>[];
+      if (eligible) {
+        final ordersEnvelope = await context.apiClient.getJson(
+          '/v1/driver/orders/available',
+          authenticated: true,
+          query: const <String, Object?>{'per_page': 50},
+        );
+        for (final raw in DriverApiContext.dataList(ordersEnvelope)) {
+          if (raw is! Map) continue;
+          final order = Map<String, dynamic>.from(raw);
+          final branch = order['branch'] is Map
+              ? Map<String, dynamic>.from(order['branch'] as Map)
+              : const <String, dynamic>{};
+          final destination = order['destination'] is Map
+              ? Map<String, dynamic>.from(order['destination'] as Map)
+              : const <String, dynamic>{};
+          final candidate = DriverOrderCandidate(
+            apiOrderId: (order['id'] as num?)?.toInt(),
+            orderNumber: order['order_number']?.toString() ?? '',
+            pickupBranch: branch['name']?.toString() ?? 'Branch',
+            region: contextSnapshot.region,
+            zone: contextSnapshot.zone,
+            destinationArea: destination['area']?.toString() ??
+                destination['city']?.toString() ??
+                'Delivery area',
+            distanceToBranchKm: 0,
+            deliveryDistanceKm: 0,
+            estimatedDurationMinutes: 0,
+            bagCount: 1,
+            estimatedDriverEarning: 0,
+            currencyCode: order['currency']?.toString() ?? 'EGP',
+            allowedVehicleTypes: const <String>[],
+            isAvailable: true,
+          );
+          decisions.add(
+            DriverOrderEligibilityDecision(
+              order: candidate,
+              checks: const <DriverEligibilityRuleCheck>[
+                DriverEligibilityRuleCheck(
+                  rule: DriverOrderEligibilityRule.driverApproved,
+                  passed: true,
+                  detail: 'Laravel eligibility accepted this order.',
+                ),
+                DriverEligibilityRuleCheck(
+                  rule: DriverOrderEligibilityRule.orderAvailable,
+                  passed: true,
+                  detail: 'Order remains in the server available pool.',
+                ),
+              ],
+            ),
+          );
+        }
+      }
+
       return DriverOrderEligibilityLoadResult.success(
         DriverOrderEligibilitySnapshot(
           context: contextSnapshot,
-          decisions: const <DriverOrderEligibilityDecision>[],
+          decisions: decisions,
         ),
       );
     } on ApiException catch (error) {
