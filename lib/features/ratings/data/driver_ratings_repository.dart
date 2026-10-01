@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_rating_models.dart';
 
 abstract interface class DriverRatingsRepository {
@@ -10,10 +12,99 @@ abstract interface class DriverRatingsRepository {
 class DriverRatingsRepositoryFactory {
   DriverRatingsRepositoryFactory._();
 
-  static DriverRatingsRepository create(AppConfig config) {
+  static DriverRatingsRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverRatingsRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? const DemoDriverRatingsRepository()
         : const UnavailableDriverRatingsRepository();
+  }
+}
+
+class ApiDriverRatingsRepository implements DriverRatingsRepository {
+  final DriverApiContext context;
+  const ApiDriverRatingsRepository(this.context);
+
+  @override
+  DriverRatingsDataSource get source => DriverRatingsDataSource.api;
+
+  @override
+  Future<DriverRatingsLoadResult> loadRatings() async {
+    try {
+      final summary = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/ratings/summary',
+          authenticated: true,
+        ),
+      );
+      final listEnvelope = await context.apiClient.getJson(
+        '/v1/driver/ratings',
+        query: const <String, Object?>{'per_page': 50},
+        authenticated: true,
+      );
+      final reviews = DriverApiContext.nestedItems(listEnvelope)
+          .whereType<Map>()
+          .map((raw) => _review(Map<String, dynamic>.from(raw)))
+          .toList(growable: false);
+
+      final breakdownRaw = summary['star_breakdown'] is Map
+          ? Map<String, dynamic>.from(summary['star_breakdown'] as Map)
+          : const <String, dynamic>{};
+
+      return DriverRatingsLoadResult.success(
+        DriverRatingsSnapshot(
+          averageRating:
+              double.tryParse(summary['average_rating']?.toString() ?? '') ?? 0,
+          deliveryCount: (summary['delivery_count'] as num?)?.toInt() ??
+              (summary['total_ratings'] as num?)?.toInt() ??
+              reviews.length,
+          ratingCount:
+              (summary['total_ratings'] as num?)?.toInt() ?? reviews.length,
+          distribution: [
+            for (var stars = 5; stars >= 1; stars--)
+              DriverRatingBucket(
+                stars: stars,
+                count: (breakdownRaw['$stars'] as num?)?.toInt() ?? 0,
+              ),
+          ],
+          tagSummary: const <DriverReviewTagSummary>[],
+          recentReviews: reviews,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverRatingsLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverRatingsLoadResult.failure(error.message);
+    }
+  }
+
+  DriverCustomerReview _review(Map<String, dynamic> raw) {
+    final order = raw['order'] is Map
+        ? Map<String, dynamic>.from(raw['order'] as Map)
+        : const <String, dynamic>{};
+    final dispute = raw['dispute'] is Map
+        ? Map<String, dynamic>.from(raw['dispute'] as Map)
+        : const <String, dynamic>{};
+    final id = (raw['id'] as num?)?.toInt();
+
+    return DriverCustomerReview(
+      id: id?.toString() ?? '',
+      apiReviewId: id,
+      orderNumber: order['order_number']?.toString() ?? '',
+      rating: (raw['rating'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.tryParse(raw['submitted_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      tags: const <DriverReviewTag>[],
+      comment: raw['comment']?.toString(),
+      disputeStatus: dispute['status']?.toString(),
+    );
   }
 }
 

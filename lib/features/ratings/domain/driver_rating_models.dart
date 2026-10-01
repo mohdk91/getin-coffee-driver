@@ -34,19 +34,23 @@ class DriverReviewTagSummary {
 
 class DriverCustomerReview {
   final String id;
+  final int? apiReviewId;
   final String orderNumber;
   final int rating;
   final DateTime createdAt;
   final List<DriverReviewTag> tags;
   final String? comment;
+  final String? disputeStatus;
 
   const DriverCustomerReview({
     required this.id,
+    this.apiReviewId,
     required this.orderNumber,
     required this.rating,
     required this.createdAt,
     required this.tags,
     this.comment,
+    this.disputeStatus,
   });
 }
 
