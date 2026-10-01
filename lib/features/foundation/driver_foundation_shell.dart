@@ -121,9 +121,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   late final DriverLocationRepository _locationRepository =
       widget.locationRepository ??
-          (widget.config.environment == AppEnvironment.development
-              ? const DemoDriverLocationRepository()
-              : const UnavailableDriverLocationRepository());
+          DriverLocationRepositoryFactory.create(widget.config);
   late final DriverOrderEligibilityRepository _eligibilityRepository =
       widget.eligibilityRepository ??
           DriverOrderEligibilityRepositoryFactory.create(widget.config);
