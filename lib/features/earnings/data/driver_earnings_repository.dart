@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_earnings_models.dart';
 
 abstract interface class DriverEarningsRepository {
@@ -10,11 +12,120 @@ abstract interface class DriverEarningsRepository {
 class DriverEarningsRepositoryFactory {
   DriverEarningsRepositoryFactory._();
 
-  static DriverEarningsRepository create(AppConfig config) {
+  static DriverEarningsRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverEarningsRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? const DemoDriverEarningsRepository()
         : const UnavailableDriverEarningsRepository();
   }
+}
+
+class ApiDriverEarningsRepository implements DriverEarningsRepository {
+  final DriverApiContext context;
+  const ApiDriverEarningsRepository(this.context);
+
+  @override
+  DriverEarningsDataSource get source => DriverEarningsDataSource.api;
+
+  @override
+  Future<DriverEarningsLoadResult> load(DriverEarningsPeriod period) async {
+    try {
+      final now = DateTime.now();
+      final from = switch (period) {
+        DriverEarningsPeriod.today => DateTime(now.year, now.month, now.day),
+        DriverEarningsPeriod.week => DateTime(now.year, now.month, now.day)
+            .subtract(const Duration(days: 6)),
+        DriverEarningsPeriod.month => DateTime(now.year, now.month, now.day)
+            .subtract(const Duration(days: 29)),
+      };
+      final envelope = await context.apiClient.getJson(
+        '/v1/driver/earnings',
+        query: <String, Object?>{
+          'date_from': _date(from),
+          'date_to': _date(now),
+          'per_page': 50,
+        },
+        authenticated: true,
+      );
+      final deliveries = DriverApiContext.nestedItems(envelope)
+          .whereType<Map>()
+          .map((raw) => _earning(Map<String, dynamic>.from(raw)))
+          .toList(growable: false);
+
+      return DriverEarningsLoadResult.success(
+        DriverEarningsSnapshot(
+          period: period,
+          deliveries: deliveries,
+          updatedAt: DateTime.now(),
+          rulesAreBackendDriven: true,
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverEarningsLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverEarningsLoadResult.failure(error.message);
+    }
+  }
+
+  DriverDeliveryEarning _earning(Map<String, dynamic> raw) {
+    final order = raw['order'] is Map
+        ? Map<String, dynamic>.from(raw['order'] as Map)
+        : const <String, dynamic>{};
+    final branch = raw['branch'] is Map
+        ? Map<String, dynamic>.from(raw['branch'] as Map)
+        : const <String, dynamic>{};
+    final components = raw['components'] is Map
+        ? Map<String, dynamic>.from(raw['components'] as Map)
+        : const <String, dynamic>{};
+    final adjustments = raw['adjustments'] is List
+        ? (raw['adjustments'] as List).whereType<Map>().toList()
+        : const <Map>[];
+
+    double amount(String key) =>
+        double.tryParse(components[key]?.toString() ?? '') ?? 0;
+
+    final positive = amount('positive_adjustment');
+    final negative = amount('negative_adjustment');
+    final adjustmentNote = adjustments.isEmpty
+        ? null
+        : adjustments
+            .map((entry) => entry['reason']?.toString())
+            .whereType<String>()
+            .where((value) => value.trim().isNotEmpty)
+            .join(' • ');
+
+    return DriverDeliveryEarning(
+      orderNumber: order['order_number']?.toString() ?? '',
+      pickupBranch: branch['name']?.toString() ?? 'Branch',
+      destinationArea: order['destination_area']?.toString() ??
+          order['destination_city']?.toString() ??
+          'Delivery',
+      deliveredAt: DateTime.tryParse(
+            order['completed_at']?.toString() ??
+                raw['earned_at']?.toString() ??
+                '',
+          ) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      baseEarning: amount('base_earning'),
+      distanceBonus: amount('distance_bonus'),
+      peakBonus: amount('peak_bonus'),
+      tipAmount: amount('customer_tip'),
+      adjustments: positive - negative,
+      currencyCode: raw['currency']?.toString() ?? 'EGP',
+      adjustmentNote: adjustmentNote,
+    );
+  }
+
+  String _date(DateTime value) => '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }
 
 class DemoDriverEarningsRepository implements DriverEarningsRepository {

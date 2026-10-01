@@ -34,19 +34,23 @@ class DriverReviewTagSummary {
 
 class DriverCustomerReview {
   final String id;
+  final int? apiReviewId;
   final String orderNumber;
   final int rating;
   final DateTime createdAt;
   final List<DriverReviewTag> tags;
   final String? comment;
+  final String? disputeStatus;
 
   const DriverCustomerReview({
     required this.id,
+    this.apiReviewId,
     required this.orderNumber,
     required this.rating,
     required this.createdAt,
     required this.tags,
     this.comment,
+    this.disputeStatus,
   });
 }
 
@@ -93,4 +97,20 @@ class DriverRatingsLoadResult {
       : this._(errorMessage: message);
 
   bool get isSuccess => snapshot != null;
+}
+
+class DriverRatingDisputeResult {
+  final bool success;
+  final String message;
+
+  const DriverRatingDisputeResult._({
+    required this.success,
+    required this.message,
+  });
+
+  const DriverRatingDisputeResult.success(String message)
+      : this._(success: true, message: message);
+
+  const DriverRatingDisputeResult.failure(String message)
+      : this._(success: false, message: message);
 }

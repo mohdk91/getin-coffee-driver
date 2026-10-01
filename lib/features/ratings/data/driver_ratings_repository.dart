@@ -1,19 +1,159 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_rating_models.dart';
 
 abstract interface class DriverRatingsRepository {
   DriverRatingsDataSource get source;
   Future<DriverRatingsLoadResult> loadRatings();
+
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  });
 }
 
 class DriverRatingsRepositoryFactory {
   DriverRatingsRepositoryFactory._();
 
-  static DriverRatingsRepository create(AppConfig config) {
+  static DriverRatingsRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverRatingsRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? const DemoDriverRatingsRepository()
         : const UnavailableDriverRatingsRepository();
+  }
+}
+
+class ApiDriverRatingsRepository implements DriverRatingsRepository {
+  final DriverApiContext context;
+  const ApiDriverRatingsRepository(this.context);
+
+  @override
+  DriverRatingsDataSource get source => DriverRatingsDataSource.api;
+
+  @override
+  Future<DriverRatingsLoadResult> loadRatings() async {
+    try {
+      final summary = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/ratings/summary',
+          authenticated: true,
+        ),
+      );
+      final listEnvelope = await context.apiClient.getJson(
+        '/v1/driver/ratings',
+        query: const <String, Object?>{'per_page': 50},
+        authenticated: true,
+      );
+      final reviews = DriverApiContext.nestedItems(listEnvelope)
+          .whereType<Map>()
+          .map((raw) => _review(Map<String, dynamic>.from(raw)))
+          .toList(growable: false);
+
+      final breakdownRaw = summary['star_breakdown'] is Map
+          ? Map<String, dynamic>.from(summary['star_breakdown'] as Map)
+          : const <String, dynamic>{};
+
+      return DriverRatingsLoadResult.success(
+        DriverRatingsSnapshot(
+          averageRating:
+              double.tryParse(summary['average_rating']?.toString() ?? '') ?? 0,
+          deliveryCount: (summary['delivery_count'] as num?)?.toInt() ??
+              (summary['total_ratings'] as num?)?.toInt() ??
+              reviews.length,
+          ratingCount:
+              (summary['total_ratings'] as num?)?.toInt() ?? reviews.length,
+          distribution: [
+            for (var stars = 5; stars >= 1; stars--)
+              DriverRatingBucket(
+                stars: stars,
+                count: (breakdownRaw['$stars'] as num?)?.toInt() ?? 0,
+              ),
+          ],
+          tagSummary: const <DriverReviewTagSummary>[],
+          recentReviews: reviews,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverRatingsLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverRatingsLoadResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    final id = review.apiReviewId;
+    final clean = reason.trim();
+    if (id == null) {
+      return const DriverRatingDisputeResult.failure(
+        'This review is missing its Laravel identifier.',
+      );
+    }
+    if (clean.length < 10) {
+      return const DriverRatingDisputeResult.failure(
+        'Please describe the dispute in at least 10 characters.',
+      );
+    }
+    if (review.disputeStatus == 'open') {
+      return const DriverRatingDisputeResult.failure(
+        'A dispute is already open for this review.',
+      );
+    }
+
+    try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/ratings/$id/dispute',
+        authenticated: true,
+        headers: <String, String>{
+          'Idempotency-Key': 'driver-rating-dispute-$id',
+        },
+        body: <String, Object?>{
+          'reason_code': 'other',
+          'reason': clean,
+        },
+      );
+      return const DriverRatingDisputeResult.success(
+        'Review dispute submitted to Getin operations.',
+      );
+    } on ApiException catch (error) {
+      return DriverRatingDisputeResult.failure(error.message);
+    }
+  }
+
+  DriverCustomerReview _review(Map<String, dynamic> raw) {
+    final order = raw['order'] is Map
+        ? Map<String, dynamic>.from(raw['order'] as Map)
+        : const <String, dynamic>{};
+    final dispute = raw['dispute'] is Map
+        ? Map<String, dynamic>.from(raw['dispute'] as Map)
+        : const <String, dynamic>{};
+    final id = (raw['id'] as num?)?.toInt();
+
+    return DriverCustomerReview(
+      id: id?.toString() ?? '',
+      apiReviewId: id,
+      orderNumber: order['order_number']?.toString() ?? '',
+      rating: (raw['rating'] as num?)?.toInt() ?? 0,
+      createdAt: DateTime.tryParse(raw['submitted_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      tags: const <DriverReviewTag>[],
+      comment: raw['comment']?.toString(),
+      disputeStatus: dispute['status']?.toString(),
+    );
   }
 }
 
@@ -105,6 +245,21 @@ class DemoDriverRatingsRepository implements DriverRatingsRepository {
       ),
     );
   }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    if (reason.trim().length < 10) {
+      return const DriverRatingDisputeResult.failure(
+        'Please describe the dispute in at least 10 characters.',
+      );
+    }
+    return const DriverRatingDisputeResult.success(
+      'Demo dispute recorded locally for preview only.',
+    );
+  }
 }
 
 class UnavailableDriverRatingsRepository implements DriverRatingsRepository {
@@ -117,6 +272,16 @@ class UnavailableDriverRatingsRepository implements DriverRatingsRepository {
   Future<DriverRatingsLoadResult> loadRatings() async {
     return const DriverRatingsLoadResult.failure(
       'Driver ratings and reviews are not connected to the Laravel API yet. Getin will not invent production ratings, reviews or customer feedback.',
+    );
+  }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    return const DriverRatingDisputeResult.failure(
+      'Rating disputes are not connected to the Laravel API yet. No dispute was submitted.',
     );
   }
 }

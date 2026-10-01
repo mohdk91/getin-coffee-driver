@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../domain/driver_commission_models.dart';
 
 abstract interface class DriverCommissionRepository {
@@ -10,11 +12,129 @@ abstract interface class DriverCommissionRepository {
 class DriverCommissionRepositoryFactory {
   DriverCommissionRepositoryFactory._();
 
-  static DriverCommissionRepository create(AppConfig config) {
+  static DriverCommissionRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverCommissionRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? const DemoDriverCommissionRepository()
         : const UnavailableDriverCommissionRepository();
   }
+}
+
+class ApiDriverCommissionRepository implements DriverCommissionRepository {
+  final DriverApiContext context;
+  const ApiDriverCommissionRepository(this.context);
+
+  @override
+  DriverCommissionDataSource get source => DriverCommissionDataSource.api;
+
+  @override
+  Future<DriverCommissionLoadResult> loadPolicy() async {
+    try {
+      final envelope = await context.apiClient.getJson(
+        '/v1/driver/earnings',
+        query: const <String, Object?>{'per_page': 1},
+        authenticated: true,
+      );
+      final items = DriverApiContext.nestedItems(envelope);
+      if (items.isEmpty || items.first is! Map) {
+        return const DriverCommissionLoadResult.failure(
+          'No backend earning snapshot is available yet. Commission rules will appear after a server-calculated delivery earning exists.',
+        );
+      }
+
+      final raw = Map<String, dynamic>.from(items.first as Map);
+      final components = raw['components'] is Map
+          ? Map<String, dynamic>.from(raw['components'] as Map)
+          : const <String, dynamic>{};
+      final policy = raw['policy'] is Map
+          ? Map<String, dynamic>.from(raw['policy'] as Map)
+          : const <String, dynamic>{};
+      final currency = raw['currency']?.toString() ?? 'EGP';
+      final version = policy['version_number']?.toString();
+      final effectiveAt = DateTime.tryParse(
+            policy['effective_at']?.toString() ??
+                raw['earned_at']?.toString() ??
+                '',
+          ) ??
+          DateTime.now();
+
+      String money(String key) =>
+          '$currency ${_amount(components[key]).toStringAsFixed(2)}';
+
+      final positive = _amount(components['positive_adjustment']);
+      final negative = _amount(components['negative_adjustment']);
+
+      return DriverCommissionLoadResult.success(
+        DriverCommissionPolicy(
+          policyVersion: version == null
+              ? 'Backend earning ${raw['id'] ?? ''}'.trim()
+              : 'Policy v$version',
+          currencyCode: currency,
+          effectiveFrom: effectiveAt,
+          effectiveUntil: null,
+          updatedAt: DateTime.now(),
+          rules: [
+            DriverCommissionRule(
+              id: 'backend-base',
+              category: DriverCommissionRuleCategory.baseEarning,
+              title: 'Base earning',
+              calculationLabel: money('base_earning'),
+              description:
+                  'Base component from the latest immutable Laravel earning snapshot.',
+            ),
+            DriverCommissionRule(
+              id: 'backend-distance',
+              category: DriverCommissionRuleCategory.distanceBonus,
+              title: 'Distance bonus',
+              calculationLabel:
+                  '${money('distance_bonus')} • ${_amount(components['distance_km']).toStringAsFixed(1)} km',
+              description:
+                  'Distance and bonus are calculated by Laravel. The Driver App does not recalculate distance commission.',
+            ),
+            DriverCommissionRule(
+              id: 'backend-peak',
+              category: DriverCommissionRuleCategory.peakBonus,
+              title: 'Peak bonus',
+              calculationLabel: money('peak_bonus'),
+              description:
+                  'Peak eligibility and amount are backend-owned and preserved with the earning snapshot.',
+            ),
+            DriverCommissionRule(
+              id: 'backend-tip',
+              category: DriverCommissionRuleCategory.tip,
+              title: 'Customer tip',
+              calculationLabel: money('customer_tip'),
+              description:
+                  'Customer tip component returned by the backend earning record.',
+            ),
+            DriverCommissionRule(
+              id: 'backend-adjustment',
+              category: DriverCommissionRuleCategory.adjustment,
+              title: 'Adjustments',
+              calculationLabel:
+                  '$currency ${(positive - negative).toStringAsFixed(2)}',
+              description:
+                  'Positive and negative adjustments are operations-controlled and auditable in Laravel.',
+            ),
+          ],
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverCommissionLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverCommissionLoadResult.failure(error.message);
+    }
+  }
+
+  double _amount(Object? value) =>
+      double.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 class DemoDriverCommissionRepository implements DriverCommissionRepository {
