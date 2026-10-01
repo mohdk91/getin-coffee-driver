@@ -59,6 +59,7 @@ class _DriverCompleteDeliveryCardState
     });
 
     final result = await widget.repository.completeDelivery(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
       verification: verification,
     );
