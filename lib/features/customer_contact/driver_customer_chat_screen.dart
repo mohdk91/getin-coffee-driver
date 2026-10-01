@@ -60,8 +60,11 @@ class _DriverCustomerChatScreenState extends State<DriverCustomerChatScreen> {
 
     final result = await _repository.loadThread(
       orderNumber: widget.delivery.orderNumber,
+      apiOrderId: widget.delivery.apiOrderId,
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -73,7 +76,9 @@ class _DriverCustomerChatScreenState extends State<DriverCustomerChatScreen> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      return;
+    }
     _controller.clear();
     await _sendText(text);
   }
@@ -83,9 +88,13 @@ class _DriverCustomerChatScreenState extends State<DriverCustomerChatScreen> {
   }
 
   Future<void> _sendText(String text) async {
-    if (_sending) return;
+    if (_sending) {
+      return;
+    }
     final clean = text.trim();
-    if (clean.isEmpty) return;
+    if (clean.isEmpty) {
+      return;
+    }
 
     setState(() {
       _sending = true;
@@ -94,9 +103,12 @@ class _DriverCustomerChatScreenState extends State<DriverCustomerChatScreen> {
 
     final result = await _repository.sendDriverMessage(
       orderNumber: widget.delivery.orderNumber,
+      apiOrderId: widget.delivery.apiOrderId,
       text: clean,
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _sending = false;
@@ -110,7 +122,9 @@ class _DriverCustomerChatScreenState extends State<DriverCustomerChatScreen> {
 
   void _scheduleScroll() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
+      if (!_scrollController.hasClients) {
+        return;
+      }
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 220),
