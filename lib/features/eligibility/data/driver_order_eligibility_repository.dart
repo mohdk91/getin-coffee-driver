@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../../home/domain/driver_home_models.dart';
 import '../../location/domain/driver_location_models.dart';
 import '../domain/driver_order_eligibility_engine.dart';
@@ -36,10 +38,95 @@ abstract interface class DriverOrderEligibilityRepository {
 class DriverOrderEligibilityRepositoryFactory {
   DriverOrderEligibilityRepositoryFactory._();
 
-  static DriverOrderEligibilityRepository create(AppConfig config) {
-    return config.environment == AppEnvironment.development
-        ? const DemoDriverOrderEligibilityRepository()
-        : const UnavailableDriverOrderEligibilityRepository();
+  static DriverOrderEligibilityRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.environment == AppEnvironment.development) {
+      return const DemoDriverOrderEligibilityRepository();
+    }
+    return ApiDriverOrderEligibilityRepository(
+      context ?? DriverApiContext.create(config),
+    );
+  }
+}
+
+class ApiDriverOrderEligibilityRepository
+    implements DriverOrderEligibilityRepository {
+  final DriverApiContext context;
+
+  const ApiDriverOrderEligibilityRepository(this.context);
+
+  @override
+  DriverOrderEligibilityDataSource get source =>
+      DriverOrderEligibilityDataSource.api;
+
+  @override
+  Future<DriverOrderEligibilityLoadResult> evaluate({
+    required DriverAvailabilityState availability,
+    required int activeOrderCount,
+    required bool driverApproved,
+  }) async {
+    try {
+      final data = DriverApiContext.dataMap(
+        await context.apiClient.getJson(
+          '/v1/driver/eligibility',
+          authenticated: true,
+        ),
+      );
+      final details = data['details'] is Map
+          ? Map<String, dynamic>.from(data['details'] as Map)
+          : const <String, dynamic>{};
+      final checks = data['checks'] is Map
+          ? Map<String, dynamic>.from(data['checks'] as Map)
+          : const <String, dynamic>{};
+      final now = DateTime.now();
+      final gpsAge = (details['gps_age_seconds'] as num?)?.toInt();
+      final gpsAccuracy = (details['gps_accuracy_meters'] as num?)?.toDouble();
+
+      final contextSnapshot = DriverEligibilityContext(
+        driverApproved: checks['approved'] == true,
+        availability: checks['online'] == true
+            ? DriverAvailabilityState.online
+            : availability,
+        gps: gpsAccuracy == null
+            ? null
+            : DriverGpsFix(
+                coordinates: const DriverCoordinates(latitude: 0, longitude: 0),
+                accuracyMeters: gpsAccuracy,
+                capturedAt: gpsAge == null
+                    ? now
+                    : now.subtract(Duration(seconds: gpsAge)),
+                state: checks['gps_fresh'] == true &&
+                        checks['gps_accurate'] == true
+                    ? DriverGpsState.ready
+                    : DriverGpsState.stale,
+              ),
+        region: details['matched_region_id']?.toString() ?? '',
+        zone: '',
+        allowedBranches: (details['assigned_branch_ids'] as List? ?? const [])
+            .map((value) => value.toString())
+            .toList(growable: false),
+        deliveryRadiusKm:
+            (details['distance_to_branch_km'] as num?)?.toDouble() ?? 0,
+        vehicleType: checks['vehicle'] == true ? 'eligible' : 'unavailable',
+        activeOrderCount:
+            (details['active_orders'] as num?)?.toInt() ?? activeOrderCount,
+        maxActiveOrders: (details['max_active_orders'] as num?)?.toInt() ?? 1,
+        evaluatedAt: now,
+      );
+
+      return DriverOrderEligibilityLoadResult.success(
+        DriverOrderEligibilitySnapshot(
+          context: contextSnapshot,
+          decisions: const <DriverOrderEligibilityDecision>[],
+        ),
+      );
+    } on ApiException catch (error) {
+      return DriverOrderEligibilityLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverOrderEligibilityLoadResult.failure(error.message);
+    }
   }
 }
 
