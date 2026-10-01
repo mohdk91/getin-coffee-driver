@@ -69,6 +69,7 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
     }
 
     final result = await _repository.loadChallenge(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
     );
     if (!mounted) return;
@@ -111,6 +112,7 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
     });
 
     final result = await _repository.verifyPin(
+      apiOrderId: widget.delivery.apiOrderId,
       challenge: challenge,
       orderNumber: widget.delivery.orderNumber,
       customerReference: challenge.customerReference,
