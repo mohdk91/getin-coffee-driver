@@ -1,5 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/config/app_environment.dart';
+import '../../../core/data/driver_api_context.dart';
+import '../../../core/network/api_exception.dart';
 import '../../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../domain/driver_order_history_models.dart';
 
@@ -11,10 +13,76 @@ abstract interface class DriverOrderHistoryRepository {
 class DriverOrderHistoryRepositoryFactory {
   DriverOrderHistoryRepositoryFactory._();
 
-  static DriverOrderHistoryRepository create(AppConfig config) {
+  static DriverOrderHistoryRepository create(
+    AppConfig config, {
+    DriverApiContext? context,
+  }) {
+    if (config.isApiConfigured) {
+      return ApiDriverOrderHistoryRepository(
+        context ?? DriverApiContext.create(config),
+      );
+    }
     return config.environment == AppEnvironment.development
         ? const DemoDriverOrderHistoryRepository()
         : const UnavailableDriverOrderHistoryRepository();
+  }
+}
+
+class ApiDriverOrderHistoryRepository implements DriverOrderHistoryRepository {
+  final DriverApiContext context;
+  const ApiDriverOrderHistoryRepository(this.context);
+
+  @override
+  DriverOrderHistoryDataSource get source => DriverOrderHistoryDataSource.api;
+
+  @override
+  Future<DriverOrderHistoryLoadResult> load() async {
+    try {
+      final envelope = await context.apiClient.getJson(
+        '/v1/driver/history',
+        query: const <String, Object?>{'per_page': 50},
+        authenticated: true,
+      );
+      final items = DriverApiContext.nestedItems(envelope)
+          .whereType<Map>()
+          .map((raw) => _item(Map<String, dynamic>.from(raw)))
+          .toList(growable: false);
+      return DriverOrderHistoryLoadResult.success(
+        DriverOrderHistorySnapshot(items: items, updatedAt: DateTime.now()),
+      );
+    } on ApiException catch (error) {
+      return DriverOrderHistoryLoadResult.failure(error.message);
+    } on FormatException catch (error) {
+      return DriverOrderHistoryLoadResult.failure(error.message);
+    }
+  }
+
+  DriverOrderHistoryItem _item(Map<String, dynamic> raw) {
+    final branch = raw['branch'] is Map
+        ? Map<String, dynamic>.from(raw['branch'] as Map)
+        : const <String, dynamic>{};
+    final destination = raw['destination'] is Map
+        ? Map<String, dynamic>.from(raw['destination'] as Map)
+        : const <String, dynamic>{};
+    final earning = raw['earning'] is Map
+        ? Map<String, dynamic>.from(raw['earning'] as Map)
+        : const <String, dynamic>{};
+    final stateName = raw['delivery_state']?.toString() ?? 'accepted';
+
+    return DriverOrderHistoryItem(
+      orderNumber: raw['order_number']?.toString() ?? '',
+      pickupBranch: branch['name']?.toString() ?? 'Branch',
+      destinationArea: destination['area']?.toString() ??
+          destination['city']?.toString() ??
+          'Destination',
+      state: driverDeliveryStateFromStatus(stateName),
+      occurredAt: DateTime.tryParse(raw['occurred_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      bagCount: (raw['bag_count'] as num?)?.toInt() ?? 0,
+      driverEarning: double.tryParse(earning['amount']?.toString() ?? '') ?? 0,
+      currencyCode: earning['currency']?.toString() ?? 'EGP',
+      note: raw['note']?.toString(),
+    );
   }
 }
 
