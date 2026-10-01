@@ -151,8 +151,11 @@ class ApiDriverSecurityRepository implements DriverSecurityRepository {
       await sessions.revokeCurrent();
       await tokens.clearAccessToken();
       return const DriverSecurityActionResult.success('Signed out.');
-    } on ApiException catch (error) {
-      return DriverSecurityActionResult.failure(error.message);
+    } on ApiException {
+      await tokens.clearAccessToken();
+      return const DriverSecurityActionResult.success(
+        'Signed out on this device. The server session could not be confirmed as revoked, so review Active Sessions after signing in again.',
+      );
     }
   }
 }
