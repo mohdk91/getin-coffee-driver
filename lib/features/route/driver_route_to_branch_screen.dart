@@ -231,6 +231,7 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
         builder: (_) => DriverOrderContentsScreen(
           config: widget.config,
           orderNumber: widget.delivery.orderNumber,
+          apiOrderId: widget.delivery.apiOrderId,
           repository: widget.orderContentsRepository,
         ),
       ),
