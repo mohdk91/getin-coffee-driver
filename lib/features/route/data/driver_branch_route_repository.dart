@@ -12,6 +12,10 @@ abstract interface class DriverBranchRouteRepository {
   Future<DriverBranchRouteLoadResult> load({
     required DriverActiveDeliverySummary delivery,
   });
+
+  Future<String?> arriveAtBranch({
+    required DriverActiveDeliverySummary delivery,
+  });
 }
 
 class DriverBranchRouteRepositoryFactory {
@@ -113,6 +117,29 @@ class ApiDriverBranchRouteRepository implements DriverBranchRouteRepository {
       return DriverBranchRouteLoadResult.failure(error.message);
     }
   }
+
+  @override
+  Future<String?> arriveAtBranch({
+    required DriverActiveDeliverySummary delivery,
+  }) async {
+    final orderId = delivery.apiOrderId;
+    if (orderId == null) {
+      return 'The active delivery is missing its Laravel order identifier.';
+    }
+    try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/orders/$orderId/arrived-at-branch',
+        authenticated: true,
+        headers: <String, String>{
+          'Idempotency-Key': 'driver-arrived-at-branch-$orderId',
+        },
+      );
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    }
+  }
 }
 
 class DemoDriverBranchRouteRepository implements DriverBranchRouteRepository {
@@ -147,6 +174,12 @@ class DemoDriverBranchRouteRepository implements DriverBranchRouteRepository {
       ),
     );
   }
+
+  @override
+  Future<String?> arriveAtBranch({
+    required DriverActiveDeliverySummary delivery,
+  }) async =>
+      null;
 }
 
 class UnavailableDriverBranchRouteRepository
@@ -164,4 +197,10 @@ class UnavailableDriverBranchRouteRepository
       'Branch route data is not connected to the Laravel API yet.',
     );
   }
+
+  @override
+  Future<String?> arriveAtBranch({
+    required DriverActiveDeliverySummary delivery,
+  }) async =>
+      'Arrival could not be confirmed with Getin.';
 }

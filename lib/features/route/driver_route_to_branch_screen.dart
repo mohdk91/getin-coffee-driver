@@ -156,9 +156,21 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
     );
   }
 
-  void _openPickupVerification() {
+  Future<void> _openPickupVerification() async {
     final route = _route;
     if (route == null) return;
+
+    if (_repository.source == DriverBranchRouteDataSource.api) {
+      final error = await _repository.arriveAtBranch(delivery: widget.delivery);
+      if (!mounted) return;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), behavior: SnackBarBehavior.floating),
+        );
+        return;
+      }
+    }
+
     if (!_advanceTimeline(
       DriverDeliveryState.arrivedAtBranch,
       source: 'branch_arrival',
