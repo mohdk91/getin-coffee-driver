@@ -91,6 +91,7 @@ class ApiDriverBranchRouteRepository implements DriverBranchRouteRepository {
       }
       return DriverBranchRouteLoadResult.success(
         DriverBranchRouteInfo(
+          apiOrderId: orderId,
           orderNumber:
               order['order_number']?.toString() ?? delivery.orderNumber,
           branchName: branch['name']?.toString() ?? delivery.pickupBranch,
@@ -155,6 +156,7 @@ class DemoDriverBranchRouteRepository implements DriverBranchRouteRepository {
     await Future<void>.delayed(const Duration(milliseconds: 180));
     return DriverBranchRouteLoadResult.success(
       DriverBranchRouteInfo(
+        apiOrderId: delivery.apiOrderId,
         orderNumber: delivery.orderNumber,
         branchName: delivery.pickupBranch,
         branchImageAsset: 'assets/images/branches/getin_stanley.png',
