@@ -162,6 +162,7 @@ class _DriverDeliveryNavigationScreenState
 
   Future<void> _loadExistingException() async {
     final receipt = await _exceptionRepository.loadActiveException(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
     );
     if (!mounted || receipt == null) return;
