@@ -93,8 +93,8 @@ class ApiDriverDeliveryExceptionRepository
       required String note}) async {
     if (apiOrderId == null) {
       return const DriverDeliveryExceptionResult.failure(
-          message:
-              'The active delivery is missing its Laravel order identifier.');
+        message: 'The active delivery is missing its Laravel order identifier.',
+      );
     }
     try {
       await context.apiClient.requestJson(

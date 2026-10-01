@@ -221,29 +221,42 @@ class DemoDriverBranchPickupRepository implements DriverBranchPickupRepository {
 class UnavailableDriverBranchPickupRepository
     implements DriverBranchPickupRepository {
   const UnavailableDriverBranchPickupRepository();
+
   @override
   DriverBranchPickupDataSource get source => DriverBranchPickupDataSource.api;
+
   @override
-  Future<DriverBranchPickupVerificationResult> verifyToken(
-          {required int? apiOrderId,
-          required String orderNumber,
-          required String branchName,
-          required String token}) async =>
-      const DriverBranchPickupVerificationResult.failure(
-          'Branch pickup verification is unavailable.');
+  Future<DriverBranchPickupVerificationResult> verifyToken({
+    required int? apiOrderId,
+    required String orderNumber,
+    required String branchName,
+    required String token,
+  }) async {
+    return const DriverBranchPickupVerificationResult.failure(
+      'Branch pickup verification is not connected to the Laravel API yet. No order status changed.',
+    );
+  }
+
   @override
-  Future<DriverBranchPickupVerificationResult> scanBranchQr(
-          {required int? apiOrderId,
-          required String orderNumber,
-          required String branchName}) async =>
-      const DriverBranchPickupVerificationResult.failure(
-          'Branch QR verification is unavailable.');
+  Future<DriverBranchPickupVerificationResult> scanBranchQr({
+    required int? apiOrderId,
+    required String orderNumber,
+    required String branchName,
+  }) async {
+    return const DriverBranchPickupVerificationResult.failure(
+      'The production branch QR scanner is not connected yet. No order status changed.',
+    );
+  }
+
   @override
-  Future<DriverBranchPickupReceiveResult> confirmReceived(
-          {required int? apiOrderId,
-          required DriverBranchPickupVerification verification,
-          required double? latitude,
-          required double? longitude}) async =>
-      const DriverBranchPickupReceiveResult.failure(
-          'Getin could not confirm pickup.');
+  Future<DriverBranchPickupReceiveResult> confirmReceived({
+    required int? apiOrderId,
+    required DriverBranchPickupVerification verification,
+    required double? latitude,
+    required double? longitude,
+  }) async {
+    return const DriverBranchPickupReceiveResult.failure(
+      'Getin could not confirm pickup with the server. The order remains uncollected.',
+    );
+  }
 }

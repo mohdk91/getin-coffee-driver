@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/config/app_environment.dart';
+import '../../core/data/driver_api_context.dart';
 import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
 import '../../core/widgets/app_state_view.dart';
@@ -42,6 +43,7 @@ import '../route/driver_route_to_branch_screen.dart';
 import '../ratings/domain/driver_rating_models.dart';
 import '../ratings/driver_ratings_reviews_screen.dart';
 import '../recovery/data/driver_runtime_recovery_store.dart';
+import '../recovery/data/driver_runtime_recovery_api_repository.dart';
 import '../support/data/driver_support_chat_repository.dart';
 import '../support/driver_support_chat_screen.dart';
 
@@ -153,7 +155,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || !mounted) return;
+    if (state != AppLifecycleState.resumed || !mounted) {
+      return;
+    }
     setState(() => _homeReloadToken += 1);
     _syncBackgroundLocation();
   }
@@ -177,7 +181,20 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     } catch (_) {
       recovered = DriverRuntimeRecoverySnapshot.empty;
     }
-    if (!mounted) return;
+    if (widget.config.environment != AppEnvironment.development &&
+        widget.config.isApiConfigured) {
+      try {
+        recovered = await DriverRuntimeRecoveryApiRepository(
+          DriverApiContext.create(widget.config),
+        ).load();
+      } catch (_) {
+        // Offline startup may use the last local snapshot. Critical mutations
+        // remain protected by the app's online action gate.
+      }
+    }
+    if (!mounted) {
+      return;
+    }
 
     final recoveredDelivery = recovered.activeDelivery;
     final canRestoreDelivery = recoveredDelivery != null &&
@@ -202,7 +219,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _persistRuntimeState() {
-    if (!_runtimeRecoveryLoaded) return;
+    if (!_runtimeRecoveryLoaded) {
+      return;
+    }
     final active = _currentActiveDelivery;
     unawaited(
       _recoveryStore.save(
@@ -239,7 +258,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   void _syncBackgroundLocation() {
     final snapshot = _homeSnapshot;
-    if (snapshot == null) return;
+    if (snapshot == null) {
+      return;
+    }
 
     unawaited(
       _backgroundLocationController.updateContext(
@@ -258,7 +279,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   bool _criticalActionGate() => !_isOffline;
 
   void _retryOfflineConnection() {
-    if (_offlineRetrying) return;
+    if (_offlineRetrying) {
+      return;
+    }
     setState(() {
       _offlineRetrying = true;
       _homeReloadToken += 1;
@@ -266,7 +289,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _handleHomeLoadFinished() {
-    if (!mounted || !_offlineRetrying) return;
+    if (!mounted || !_offlineRetrying) {
+      return;
+    }
     setState(() => _offlineRetrying = false);
   }
 
@@ -297,7 +322,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     String? note,
   }) {
     final current = _currentActiveDelivery;
-    if (!mounted || current == null) return false;
+    if (!mounted || current == null) {
+      return false;
+    }
 
     final timeline = _ensureTimeline(current);
     final result = DriverDeliveryStateMachine.advanceTo(
@@ -340,7 +367,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _receiveHomeSnapshot(DriverHomeSnapshot snapshot) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     var nextSnapshot = snapshot;
     final incoming = snapshot.activeDelivery;
@@ -379,7 +408,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _handleOrderAccepted(DriverAcceptedOrder acceptedOrder) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     var timeline = DriverDeliveryStateMachine.seed(
       orderNumber: acceptedOrder.order.orderNumber,
@@ -392,7 +423,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       source: 'route_to_branch',
       note: 'Accepted order entered the branch-routing stage.',
     );
-    if (routing.isSuccess) timeline = routing.timeline;
+    if (routing.isSuccess) {
+      timeline = routing.timeline;
+    }
 
     setState(() {
       _activeTimeline = timeline;
@@ -450,7 +483,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _handleDeliveryCompleted(DriverDeliveryCompletionReceipt receipt) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     final transitioned = _transitionActiveDelivery(
       DriverDeliveryState.delivered,
@@ -458,7 +493,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       demo: receipt.isDemo,
       note: 'Customer handoff verified and completion confirmed.',
     );
-    if (!transitioned) return;
+    if (!transitioned) {
+      return;
+    }
 
     final completedDelivery = _currentActiveDelivery;
     setState(() {
@@ -560,9 +597,13 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _updateUnreadNotificationCount(int count) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     final snapshot = _homeSnapshot;
-    if (snapshot == null || snapshot.unreadNotifications == count) return;
+    if (snapshot == null || snapshot.unreadNotifications == count) {
+      return;
+    }
     setState(() {
       _homeSnapshot = snapshot.copyWith(
         unreadNotifications: count,
@@ -584,9 +625,13 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _updateGpsState(DriverGpsState state) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     final snapshot = _homeSnapshot;
-    if (snapshot == null || snapshot.gpsState == state) return;
+    if (snapshot == null || snapshot.gpsState == state) {
+      return;
+    }
 
     setState(() {
       _homeSnapshot = snapshot.copyWith(
@@ -599,7 +644,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   void _openOrderEligibility() {
     final snapshot = _homeSnapshot;
-    if (snapshot == null) return;
+    if (snapshot == null) {
+      return;
+    }
 
     _pushOnce(
       'order-eligibility',

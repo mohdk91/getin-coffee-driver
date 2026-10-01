@@ -166,7 +166,7 @@ class UnavailableDriverDeliveryDestinationRepository
   Future<DriverDeliveryDestinationLoadResult> load(
           {required String orderNumber, int? apiOrderId}) async =>
       const DriverDeliveryDestinationLoadResult.failure(
-          'The exact delivery destination is unavailable.');
+          'The exact delivery destination is not connected to the Laravel API yet. Getin will not invent a customer address, building, floor, apartment, map pin, or delivery instructions in production.');
   @override
   Future<String?> arriveAtCustomer({required int? apiOrderId}) async =>
       'Could not confirm arrival with Getin.';

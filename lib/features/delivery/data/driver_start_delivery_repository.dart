@@ -121,14 +121,19 @@ class DemoDriverStartDeliveryRepository
 class UnavailableDriverStartDeliveryRepository
     implements DriverStartDeliveryRepository {
   const UnavailableDriverStartDeliveryRepository();
+
   @override
   DriverStartDeliveryDataSource get source => DriverStartDeliveryDataSource.api;
+
   @override
-  Future<DriverStartDeliveryResult> startDelivery(
-          {required int? apiOrderId,
-          required String orderNumber,
-          required double? latitude,
-          required double? longitude}) async =>
-      const DriverStartDeliveryResult.failure(
-          'Could not confirm Start Delivery with Getin.');
+  Future<DriverStartDeliveryResult> startDelivery({
+    required int? apiOrderId,
+    required String orderNumber,
+    required double? latitude,
+    required double? longitude,
+  }) async {
+    return const DriverStartDeliveryResult.failure(
+      'Could not confirm Start Delivery with Getin. The order remains picked up and its status has not changed.',
+    );
+  }
 }

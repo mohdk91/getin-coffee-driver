@@ -26,10 +26,12 @@ void main() {
   test('Task 21 PIN supports invalid, wrong-order and too-many-attempt states',
       () async {
     final repository = DemoDriverDeliveryPinRepository();
-    final challenge =
-        (await repository.loadChallenge(orderNumber: 'GD-2481')).challenge!;
+    final challenge = (await repository.loadChallenge(
+            apiOrderId: null, orderNumber: 'GD-2481'))
+        .challenge!;
 
     final invalid = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -39,6 +41,7 @@ void main() {
     expect(invalid.failureReason, DriverDeliveryPinFailureReason.invalidCode);
 
     final wrongOrder = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: 'GD-9999',
       customerReference: challenge.customerReference,
@@ -48,6 +51,7 @@ void main() {
     expect(wrongOrder.failureReason, DriverDeliveryPinFailureReason.wrongOrder);
 
     await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -55,6 +59,7 @@ void main() {
       code: '2222',
     );
     final locked = await repository.verifyPin(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -80,6 +85,7 @@ void main() {
     );
 
     final expired = await repository.verifyPin(
+      apiOrderId: null,
       challenge: expiredChallenge,
       orderNumber: expiredChallenge.orderNumber,
       customerReference: expiredChallenge.customerReference,
@@ -88,9 +94,11 @@ void main() {
     );
     expect(expired.failureReason, DriverDeliveryPinFailureReason.expired);
 
-    final live =
-        (await repository.loadChallenge(orderNumber: 'GD-3199')).challenge!;
+    final live = (await repository.loadChallenge(
+            apiOrderId: null, orderNumber: 'GD-3199'))
+        .challenge!;
     await repository.verifyPin(
+      apiOrderId: null,
       challenge: live,
       orderNumber: live.orderNumber,
       customerReference: live.customerReference,
@@ -98,6 +106,7 @@ void main() {
       code: DemoDriverDeliveryPinRepository.demoCode,
     );
     final reused = await repository.verifyPin(
+      apiOrderId: null,
       challenge: live,
       orderNumber: live.orderNumber,
       customerReference: live.customerReference,
@@ -109,10 +118,12 @@ void main() {
 
   test('Task 21 QR supports invalid and too-many-attempt states', () async {
     final repository = DemoDriverDeliveryQrRepository();
-    final challenge =
-        (await repository.loadChallenge(orderNumber: 'GD-2481')).challenge!;
+    final challenge = (await repository.loadChallenge(
+            apiOrderId: null, orderNumber: 'GD-2481'))
+        .challenge!;
 
     final first = await repository.verifyQr(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -122,6 +133,7 @@ void main() {
     expect(first.failureReason, DriverDeliveryQrFailureReason.invalidQr);
 
     await repository.verifyQr(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,
@@ -129,6 +141,7 @@ void main() {
       qrPayload: 'BAD-QR-2',
     );
     final locked = await repository.verifyQr(
+      apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
       customerReference: challenge.customerReference,

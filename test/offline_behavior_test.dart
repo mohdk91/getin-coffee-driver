@@ -40,6 +40,7 @@ class _CountingCompletionRepository
 
   @override
   Future<DriverDeliveryCompletionResult> completeDelivery({
+    required int? apiOrderId,
     required String orderNumber,
     required DriverDeliveryPinReceipt verification,
   }) async {

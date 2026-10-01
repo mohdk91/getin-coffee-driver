@@ -19,15 +19,32 @@ class _AuthenticatedStore extends MemorySecureStore {
 
 class _Transport implements ApiTransport {
   @override
-  Future<ApiRawResponse> send(Uri uri,
-      {required String method,
-      required Map<String, String> headers,
-      Object? body,
-      required Duration timeout}) async {
+  Future<ApiRawResponse> send(
+    Uri uri, {
+    required String method,
+    required Map<String, String> headers,
+    Object? body,
+    required Duration timeout,
+  }) async {
+    if (uri.path.endsWith('/v1/driver/eligibility')) {
+      return const ApiRawResponse(
+        statusCode: 200,
+        body:
+            '{"success":true,"data":{"eligible":true,"reasons":[],"checks":{"approved":true,"online":true,"vehicle":true,"gps_fresh":true,"gps_accurate":true},"details":{"active_orders":0,"max_active_orders":1,"gps_age_seconds":10,"gps_accuracy_meters":8,"assigned_branch_ids":[4],"matched_region_id":7}}}',
+      );
+    }
+
+    if (uri.path.endsWith('/v1/driver/orders/available') ||
+        uri.path.endsWith('/v1/driver/order-offers')) {
+      return const ApiRawResponse(
+        statusCode: 200,
+        body: '{"success":true,"data":[]}',
+      );
+    }
+
     return const ApiRawResponse(
-      statusCode: 200,
-      body:
-          '{"success":true,"data":{"eligible":true,"reasons":[],"checks":{"approved":true,"online":true,"vehicle":true,"gps_fresh":true,"gps_accurate":true},"details":{"active_orders":0,"max_active_orders":1,"gps_age_seconds":10,"gps_accuracy_meters":8,"assigned_branch_ids":[4],"matched_region_id":7}}}',
+      statusCode: 404,
+      body: '{"success":false,"message":"Unexpected test endpoint."}',
     );
   }
 }
