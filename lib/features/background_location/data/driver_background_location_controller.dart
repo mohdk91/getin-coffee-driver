@@ -140,8 +140,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
             ),
           );
           if (decision.serverSyncAllowed) {
-            unawaited(
-                locationSyncRepository.sync(fix).catchError((Object _) {}));
+            unawaited(_syncServerFix(fix, generation));
           }
         },
         onError: (Object _) {
@@ -188,6 +187,29 @@ class DriverBackgroundLocationController extends ChangeNotifier {
           policy: policy,
           settings: decision.settings,
           lastFix: _snapshot.lastFix,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _syncServerFix(DriverGpsFix fix, int generation) async {
+    try {
+      await locationSyncRepository.sync(fix);
+      if (_disposed || generation != _generation) return;
+      _setSnapshot(
+        _snapshot.copyWith(
+          lastServerSyncAt: DateTime.now(),
+          clearServerSyncError: true,
+          updatedAt: DateTime.now(),
+        ),
+      );
+    } catch (_) {
+      if (_disposed || generation != _generation) return;
+      _setSnapshot(
+        _snapshot.copyWith(
+          serverSyncError:
+              'GPS is active on this device, but the latest position did not reach GETIN.',
           updatedAt: DateTime.now(),
         ),
       );

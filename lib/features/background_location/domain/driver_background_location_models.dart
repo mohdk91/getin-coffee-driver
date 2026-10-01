@@ -115,6 +115,8 @@ class DriverBackgroundTrackingSnapshot {
   final DriverBackgroundLocationPolicy? policy;
   final DriverBackgroundLocationSettings? settings;
   final DriverGpsFix? lastFix;
+  final DateTime? lastServerSyncAt;
+  final String? serverSyncError;
   final DateTime updatedAt;
 
   const DriverBackgroundTrackingSnapshot({
@@ -125,6 +127,8 @@ class DriverBackgroundTrackingSnapshot {
     required this.policy,
     required this.settings,
     required this.lastFix,
+    this.lastServerSyncAt,
+    this.serverSyncError,
     required this.updatedAt,
   });
 
@@ -150,6 +154,9 @@ class DriverBackgroundTrackingSnapshot {
     DriverBackgroundLocationSettings? settings,
     bool clearSettings = false,
     DriverGpsFix? lastFix,
+    DateTime? lastServerSyncAt,
+    String? serverSyncError,
+    bool clearServerSyncError = false,
     DateTime? updatedAt,
   }) {
     return DriverBackgroundTrackingSnapshot(
@@ -160,6 +167,9 @@ class DriverBackgroundTrackingSnapshot {
       policy: policy ?? this.policy,
       settings: clearSettings ? null : settings ?? this.settings,
       lastFix: lastFix ?? this.lastFix,
+      lastServerSyncAt: lastServerSyncAt ?? this.lastServerSyncAt,
+      serverSyncError:
+          clearServerSyncError ? null : serverSyncError ?? this.serverSyncError,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
