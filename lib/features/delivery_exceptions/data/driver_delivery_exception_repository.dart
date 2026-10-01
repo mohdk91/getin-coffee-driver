@@ -51,6 +51,58 @@ class ApiDriverDeliveryExceptionRepository
               'The active delivery is missing its Laravel order identifier.');
     }
     try {
+      if (reason == DriverDeliveryExceptionReason.returnToBranch) {
+        await context.apiClient.requestJson(
+          'POST',
+          '/v1/driver/orders/$apiOrderId/fail-delivery',
+          authenticated: true,
+          body: <String, Object?>{
+            'reason_code': 'other',
+            'note': note.trim().isEmpty
+                ? 'Return to branch requested.'
+                : note.trim(),
+          },
+          headers: <String, String>{
+            'Idempotency-Key': 'driver-fail-return-$apiOrderId',
+          },
+        );
+        final returnEnvelope = await context.apiClient.requestJson(
+          'POST',
+          '/v1/driver/orders/$apiOrderId/return-to-branch',
+          authenticated: true,
+          body: <String, Object?>{
+            'note': note.trim().isEmpty ? null : note.trim(),
+          },
+          headers: <String, String>{
+            'Idempotency-Key': 'driver-return-$apiOrderId',
+          },
+        );
+        final returnData = DriverApiContext.dataMap(returnEnvelope);
+        final failure = returnData['failure'] is Map
+            ? Map<String, dynamic>.from(returnData['failure'] as Map)
+            : <String, dynamic>{};
+        final reportedAt =
+            DateTime.tryParse(failure['returned_at']?.toString() ?? '') ??
+                DateTime.now();
+        return DriverDeliveryExceptionResult.success(
+          value: DriverDeliveryExceptionReceipt(
+            auditId: failure['id']?.toString() ?? 'return-$apiOrderId',
+            orderNumber: orderNumber,
+            driverReference: 'server-authenticated-driver',
+            reason: reason,
+            note: note.trim(),
+            reportedAt: reportedAt,
+            latitude: null,
+            longitude: null,
+            recommendedOrderState: 'returned_to_branch',
+            serverAcknowledged: true,
+            isDemo: false,
+          ),
+          message: returnEnvelope['message']?.toString() ??
+              'Return to branch confirmed by Getin.',
+        );
+      }
+
       final envelope = await context.apiClient.requestJson(
         'POST',
         '/v1/driver/orders/$apiOrderId/fail-delivery',
