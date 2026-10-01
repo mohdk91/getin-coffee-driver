@@ -11,6 +11,8 @@ abstract interface class DriverDeliveryDestinationRepository {
     required String orderNumber,
     int? apiOrderId,
   });
+
+  Future<String?> arriveAtCustomer({required int? apiOrderId});
 }
 
 class DriverDeliveryDestinationRepositoryFactory {
@@ -95,6 +97,26 @@ class ApiDriverDeliveryDestinationRepository
       return DriverDeliveryDestinationLoadResult.failure(error.message);
     }
   }
+
+  @override
+  Future<String?> arriveAtCustomer({required int? apiOrderId}) async {
+    if (apiOrderId == null) {
+      return 'The active delivery is missing its Laravel order identifier.';
+    }
+    try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/orders/$apiOrderId/arrived-customer',
+        authenticated: true,
+        headers: <String, String>{
+          'Idempotency-Key': 'driver-arrived-customer-$apiOrderId',
+        },
+      );
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    }
+  }
 }
 
 class DemoDriverDeliveryDestinationRepository
@@ -129,6 +151,9 @@ class DemoDriverDeliveryDestinationRepository
       ),
     );
   }
+
+  @override
+  Future<String?> arriveAtCustomer({required int? apiOrderId}) async => null;
 }
 
 class UnavailableDriverDeliveryDestinationRepository
@@ -142,4 +167,7 @@ class UnavailableDriverDeliveryDestinationRepository
           {required String orderNumber, int? apiOrderId}) async =>
       const DriverDeliveryDestinationLoadResult.failure(
           'The exact delivery destination is unavailable.');
+  @override
+  Future<String?> arriveAtCustomer({required int? apiOrderId}) async =>
+      'Could not confirm arrival with Getin.';
 }
