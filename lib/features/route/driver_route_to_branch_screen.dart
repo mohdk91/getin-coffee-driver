@@ -207,6 +207,7 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
     if (route == null) return;
 
     final activeDelivery = DriverActiveDeliverySummary(
+      apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
       status: 'Picked up',
       pickupBranch: widget.delivery.pickupBranch,
