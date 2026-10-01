@@ -6,7 +6,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
 import 'data/driver_ratings_repository.dart';
 import 'domain/driver_rating_models.dart';
-import '../support/driver_support_chat_screen.dart';
 
 class DriverRatingsReviewsScreen extends StatefulWidget {
   final AppConfig config;
@@ -47,7 +46,9 @@ class _DriverRatingsReviewsScreenState
     });
 
     final result = await _repository.loadRatings();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _loading = false;
@@ -56,23 +57,66 @@ class _DriverRatingsReviewsScreenState
     });
   }
 
-  void _reportReview(DriverCustomerReview review) {
+  Future<void> _reportReview(DriverCustomerReview review) async {
     final callback = widget.onReportReview;
     if (callback != null) {
       callback(review);
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DriverSupportChatScreen(
-          config: widget.config,
-          contextOrderNumber: review.orderNumber,
-          initialDraft:
-              'I want to report/dispute the customer review for order ${review.orderNumber}.',
+    if (review.disputeStatus == 'open') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('A dispute is already open for this review.')),
+      );
+      return;
+    }
+
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Dispute ${review.orderNumber} review'),
+        content: TextField(
+          controller: controller,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Explain what Getin operations should review.',
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Submit dispute'),
+          ),
+        ],
       ),
     );
+    controller.dispose();
+
+    if (!mounted || reason == null) {
+      return;
+    }
+    final result = await _repository.submitDispute(
+      review: review,
+      reason: reason,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.message)),
+    );
+    if (result.success) {
+      await _load();
+    }
   }
 
   @override

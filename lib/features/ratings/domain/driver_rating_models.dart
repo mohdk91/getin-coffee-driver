@@ -98,3 +98,19 @@ class DriverRatingsLoadResult {
 
   bool get isSuccess => snapshot != null;
 }
+
+class DriverRatingDisputeResult {
+  final bool success;
+  final String message;
+
+  const DriverRatingDisputeResult._({
+    required this.success,
+    required this.message,
+  });
+
+  const DriverRatingDisputeResult.success(String message)
+      : this._(success: true, message: message);
+
+  const DriverRatingDisputeResult.failure(String message)
+      : this._(success: false, message: message);
+}

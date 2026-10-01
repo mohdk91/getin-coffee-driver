@@ -7,6 +7,11 @@ import '../domain/driver_rating_models.dart';
 abstract interface class DriverRatingsRepository {
   DriverRatingsDataSource get source;
   Future<DriverRatingsLoadResult> loadRatings();
+
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  });
 }
 
 class DriverRatingsRepositoryFactory {
@@ -82,6 +87,50 @@ class ApiDriverRatingsRepository implements DriverRatingsRepository {
       return DriverRatingsLoadResult.failure(error.message);
     } on FormatException catch (error) {
       return DriverRatingsLoadResult.failure(error.message);
+    }
+  }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    final id = review.apiReviewId;
+    final clean = reason.trim();
+    if (id == null) {
+      return const DriverRatingDisputeResult.failure(
+        'This review is missing its Laravel identifier.',
+      );
+    }
+    if (clean.length < 10) {
+      return const DriverRatingDisputeResult.failure(
+        'Please describe the dispute in at least 10 characters.',
+      );
+    }
+    if (review.disputeStatus == 'open') {
+      return const DriverRatingDisputeResult.failure(
+        'A dispute is already open for this review.',
+      );
+    }
+
+    try {
+      await context.apiClient.requestJson(
+        'POST',
+        '/v1/driver/ratings/$id/dispute',
+        authenticated: true,
+        headers: <String, String>{
+          'Idempotency-Key': 'driver-rating-dispute-$id',
+        },
+        body: <String, Object?>{
+          'reason_code': 'other',
+          'reason': clean,
+        },
+      );
+      return const DriverRatingDisputeResult.success(
+        'Review dispute submitted to Getin operations.',
+      );
+    } on ApiException catch (error) {
+      return DriverRatingDisputeResult.failure(error.message);
     }
   }
 
@@ -196,6 +245,21 @@ class DemoDriverRatingsRepository implements DriverRatingsRepository {
       ),
     );
   }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    if (reason.trim().length < 10) {
+      return const DriverRatingDisputeResult.failure(
+        'Please describe the dispute in at least 10 characters.',
+      );
+    }
+    return const DriverRatingDisputeResult.success(
+      'Demo dispute recorded locally for preview only.',
+    );
+  }
 }
 
 class UnavailableDriverRatingsRepository implements DriverRatingsRepository {
@@ -208,6 +272,16 @@ class UnavailableDriverRatingsRepository implements DriverRatingsRepository {
   Future<DriverRatingsLoadResult> loadRatings() async {
     return const DriverRatingsLoadResult.failure(
       'Driver ratings and reviews are not connected to the Laravel API yet. Getin will not invent production ratings, reviews or customer feedback.',
+    );
+  }
+
+  @override
+  Future<DriverRatingDisputeResult> submitDispute({
+    required DriverCustomerReview review,
+    required String reason,
+  }) async {
+    return const DriverRatingDisputeResult.failure(
+      'Rating disputes are not connected to the Laravel API yet. No dispute was submitted.',
     );
   }
 }
