@@ -34,12 +34,17 @@ class _DriverCustomerContactCardState extends State<DriverCustomerContactCard> {
   bool _calling = false;
 
   Future<void> _call() async {
-    if (_calling) return;
+    if (_calling) {
+      return;
+    }
     setState(() => _calling = true);
     final result = await _contactRepository.callCustomer(
       orderNumber: widget.delivery.orderNumber,
+      apiOrderId: widget.delivery.apiOrderId,
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _calling = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(result.message)),
