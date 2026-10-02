@@ -19,6 +19,7 @@ class ApiException implements Exception {
   final Object? cause;
   final ApiFailureKind kind;
   final Duration? retryAfter;
+  final String? requestId;
 
   const ApiException(
     this.message, {
@@ -27,6 +28,7 @@ class ApiException implements Exception {
     this.cause,
     this.kind = ApiFailureKind.unknown,
     this.retryAfter,
+    this.requestId,
   });
 
   bool get isAuthenticationFailure =>
@@ -48,9 +50,15 @@ class ApiException implements Exception {
         ApiFailureKind.server,
       }.contains(kind);
 
+  String? get supportReference {
+    final value = requestId?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   @override
   String toString() {
     final code = statusCode == null ? '' : ' ($statusCode)';
-    return 'ApiException$code: $message';
+    final reference = supportReference == null ? '' : ' [${supportReference!}]';
+    return 'ApiException$code$reference: $message';
   }
 }

@@ -8,18 +8,23 @@ import 'api_retry_policy.dart';
 import 'api_transport.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
+typedef ApiRequestIdProvider = String Function();
 
 class ApiClient {
   final AppConfig config;
   final ApiTransport? transport;
   final AccessTokenProvider? tokenProvider;
   final ApiRetryPolicy retryPolicy;
+  final ApiRequestIdProvider? requestIdProvider;
+
+  static int _requestSequence = 0;
 
   const ApiClient(
     this.config, {
     this.transport,
     this.tokenProvider,
     this.retryPolicy = const ApiRetryPolicy(),
+    this.requestIdProvider,
   });
 
   Uri endpoint(String path, {Map<String, Object?> query = const {}}) {
@@ -142,11 +147,13 @@ class ApiClient {
     }
 
     final client = HttpClient()..connectionTimeout = config.requestTimeout;
+    final requestId = _newRequestId();
     try {
       final boundary = 'getin-${DateTime.now().microsecondsSinceEpoch}';
       final request =
           await client.postUrl(endpoint(path)).timeout(config.requestTimeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      request.headers.set('X-Request-ID', requestId);
       request.headers.set(
         HttpHeaders.contentTypeHeader,
         'multipart/form-data; boundary=$boundary',
@@ -191,11 +198,12 @@ class ApiClient {
           body: body,
           headers: responseHeaders,
         ),
+        requestId: requestId,
       );
     } on ApiException {
       rethrow;
     } catch (error) {
-      throw _transportFailure(error);
+      throw _transportFailure(error, requestId: requestId);
     } finally {
       client.close(force: true);
     }
@@ -230,6 +238,9 @@ class ApiClient {
       ...headers,
     };
 
+    final requestId = _requestIdFromHeaders(requestHeaders) ?? _newRequestId();
+    requestHeaders['X-Request-ID'] = requestId;
+
     if (authenticated) {
       final token = await tokenProvider?.call();
       if (token == null || token.trim().isEmpty) {
@@ -263,7 +274,7 @@ class ApiClient {
           continue;
         }
 
-        return _decode(response);
+        return _decode(response, requestId: requestId);
       } catch (error) {
         if (error is ApiException) {
           rethrow;
@@ -278,7 +289,7 @@ class ApiClient {
       }
     }
 
-    throw _transportFailure(lastTransportError);
+    throw _transportFailure(lastTransportError, requestId: requestId);
   }
 
   bool _methodIsSafeToRetry(String method) {
@@ -293,7 +304,10 @@ class ApiClient {
     }
   }
 
-  Map<String, dynamic> _decode(ApiRawResponse response) {
+  Map<String, dynamic> _decode(
+    ApiRawResponse response, {
+    required String requestId,
+  }) {
     Map<String, dynamic> payload = const <String, dynamic>{};
     if (response.body.trim().isNotEmpty) {
       try {
@@ -311,6 +325,7 @@ class ApiClient {
           statusCode: response.statusCode,
           cause: error,
           kind: ApiFailureKind.invalidResponse,
+          requestId: _responseRequestId(response.headers) ?? requestId,
         );
       }
     }
@@ -325,17 +340,19 @@ class ApiClient {
             : const <String, dynamic>{},
         kind: _failureKindForStatus(response.statusCode),
         retryAfter: _retryAfter(response.headers),
+        requestId: _responseRequestId(response.headers) ?? requestId,
       );
     }
 
     return payload;
   }
-  ApiException _transportFailure(Object? error) {
+  ApiException _transportFailure(Object? error, {required String requestId}) {
     if (error is TimeoutException) {
       return ApiException(
         'The request timed out. Please try again.',
         cause: error,
         kind: ApiFailureKind.timeout,
+        requestId: requestId,
       );
     }
     if (error is SocketException) {
@@ -343,13 +360,45 @@ class ApiClient {
         'The network is unavailable. Check your connection and try again.',
         cause: error,
         kind: ApiFailureKind.offline,
+        requestId: requestId,
       );
     }
     return ApiException(
       'Unable to reach the GETIN API.',
       cause: error,
       kind: ApiFailureKind.unknown,
+      requestId: requestId,
     );
+  }
+
+
+  String _newRequestId() {
+    final provided = requestIdProvider?.call().trim();
+    if (provided != null && _isValidRequestId(provided)) {
+      return provided;
+    }
+
+    final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final sequence = (++_requestSequence).toRadixString(36);
+    return 'mobile-$stamp-$sequence';
+  }
+
+  String? _requestIdFromHeaders(Map<String, String> headers) {
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == 'x-request-id') {
+        final value = entry.value.trim();
+        return _isValidRequestId(value) ? value : null;
+      }
+    }
+    return null;
+  }
+
+  String? _responseRequestId(Map<String, String> headers) {
+    return _requestIdFromHeaders(headers);
+  }
+
+  bool _isValidRequestId(String value) {
+    return RegExp(r'^[A-Za-z0-9._:-]{8,96}$').hasMatch(value);
   }
 
   ApiFailureKind _failureKindForStatus(int statusCode) {
