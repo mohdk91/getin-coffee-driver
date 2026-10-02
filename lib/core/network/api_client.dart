@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -139,35 +140,65 @@ class ApiClient {
     if (!await file.exists()) {
       throw const ApiException('Selected document file is unavailable.');
     }
-    final boundary = 'getin-${DateTime.now().microsecondsSinceEpoch}';
-    final request = await HttpClient().postUrl(endpoint(path));
-    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-    request.headers.set(HttpHeaders.contentTypeHeader,
-        'multipart/form-data; boundary=$boundary');
-    if (authenticated) {
-      final token = await tokenProvider?.call();
-      if (token == null || token.trim().isEmpty) {
-        throw const ApiException(
-          'Authentication token is unavailable.',
-          statusCode: 401,
+
+    final client = HttpClient()..connectionTimeout = config.requestTimeout;
+    try {
+      final boundary = 'getin-${DateTime.now().microsecondsSinceEpoch}';
+      final request =
+          await client.postUrl(endpoint(path)).timeout(config.requestTimeout);
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      request.headers.set(
+        HttpHeaders.contentTypeHeader,
+        'multipart/form-data; boundary=$boundary',
+      );
+      if (authenticated) {
+        final token = await tokenProvider?.call();
+        if (token == null || token.trim().isEmpty) {
+          throw const ApiException(
+            'Authentication token is unavailable.',
+            statusCode: 401,
+            kind: ApiFailureKind.authentication,
+          );
+        }
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer ${token.trim()}',
         );
       }
-      request.headers
-          .set(HttpHeaders.authorizationHeader, 'Bearer ${token.trim()}');
-    }
-    for (final entry in fields.entries) {
+      for (final entry in fields.entries) {
+        request.write(
+          '--$boundary\r\nContent-Disposition: form-data; name="${entry.key}"\r\n\r\n${entry.value}\r\n',
+        );
+      }
+      final name = file.uri.pathSegments.isEmpty
+          ? 'document'
+          : file.uri.pathSegments.last;
       request.write(
-          '--$boundary\r\nContent-Disposition: form-data; name="${entry.key}"\r\n\r\n${entry.value}\r\n');
+        '--$boundary\r\nContent-Disposition: form-data; name="$fileField"; filename="$name"\r\nContent-Type: ${_mimeFor(name)}\r\n\r\n',
+      );
+      request.add(await file.readAsBytes());
+      request.write('\r\n--$boundary--\r\n');
+      final response = await request.close().timeout(config.requestTimeout);
+      final body =
+          await utf8.decoder.bind(response).join().timeout(config.requestTimeout);
+      final responseHeaders = <String, String>{};
+      response.headers.forEach((header, values) {
+        responseHeaders[header] = values.join(',');
+      });
+      return _decode(
+        ApiRawResponse(
+          statusCode: response.statusCode,
+          body: body,
+          headers: responseHeaders,
+        ),
+      );
+    } on ApiException {
+      rethrow;
+    } catch (error) {
+      throw _transportFailure(error);
+    } finally {
+      client.close(force: true);
     }
-    final name =
-        file.uri.pathSegments.isEmpty ? 'document' : file.uri.pathSegments.last;
-    request.write(
-        '--$boundary\r\nContent-Disposition: form-data; name="$fileField"; filename="$name"\r\nContent-Type: ${_mimeFor(name)}\r\n\r\n');
-    request.add(await file.readAsBytes());
-    request.write('\r\n--$boundary--\r\n');
-    final response = await request.close().timeout(config.requestTimeout);
-    final body = await utf8.decoder.bind(response).join();
-    return _decode(ApiRawResponse(statusCode: response.statusCode, body: body));
   }
 
   String _mimeFor(String name) {
@@ -205,6 +236,7 @@ class ApiClient {
         throw const ApiException(
           'Authentication token is unavailable.',
           statusCode: 401,
+          kind: ApiFailureKind.authentication,
         );
       }
       requestHeaders['Authorization'] = 'Bearer ${token.trim()}';
@@ -246,10 +278,7 @@ class ApiClient {
       }
     }
 
-    throw ApiException(
-      'Unable to reach the GETIN API.',
-      cause: lastTransportError,
-    );
+    throw _transportFailure(lastTransportError);
   }
 
   bool _methodIsSafeToRetry(String method) {
@@ -281,6 +310,7 @@ class ApiClient {
           'The GETIN API returned an invalid JSON response.',
           statusCode: response.statusCode,
           cause: error,
+          kind: ApiFailureKind.invalidResponse,
         );
       }
     }
@@ -293,9 +323,58 @@ class ApiClient {
         errors: rawErrors is Map
             ? Map<String, dynamic>.from(rawErrors)
             : const <String, dynamic>{},
+        kind: _failureKindForStatus(response.statusCode),
+        retryAfter: _retryAfter(response.headers),
       );
     }
 
     return payload;
+  }
+  ApiException _transportFailure(Object? error) {
+    if (error is TimeoutException) {
+      return ApiException(
+        'The request timed out. Please try again.',
+        cause: error,
+        kind: ApiFailureKind.timeout,
+      );
+    }
+    if (error is SocketException) {
+      return ApiException(
+        'The network is unavailable. Check your connection and try again.',
+        cause: error,
+        kind: ApiFailureKind.offline,
+      );
+    }
+    return ApiException(
+      'Unable to reach the GETIN API.',
+      cause: error,
+      kind: ApiFailureKind.unknown,
+    );
+  }
+
+  ApiFailureKind _failureKindForStatus(int statusCode) {
+    return switch (statusCode) {
+      401 => ApiFailureKind.authentication,
+      403 => ApiFailureKind.forbidden,
+      404 => ApiFailureKind.notFound,
+      408 => ApiFailureKind.timeout,
+      409 => ApiFailureKind.conflict,
+      422 => ApiFailureKind.validation,
+      429 => ApiFailureKind.rateLimited,
+      >= 500 => ApiFailureKind.server,
+      _ => ApiFailureKind.unknown,
+    };
+  }
+
+  Duration? _retryAfter(Map<String, String> headers) {
+    String? value;
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == 'retry-after') {
+        value = entry.value.trim();
+        break;
+      }
+    }
+    final seconds = int.tryParse(value ?? '');
+    return seconds == null || seconds < 0 ? null : Duration(seconds: seconds);
   }
 }
