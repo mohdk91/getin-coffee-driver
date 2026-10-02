@@ -16,48 +16,38 @@ class GetinActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelText = Text(
+      label,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    );
+
     final child = icon == null
-        ? Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          )
+        ? labelText
         : Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 20),
               const SizedBox(width: 8),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    softWrap: false,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
+              Flexible(child: labelText),
             ],
           );
 
-    if (secondary) {
-      return SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          onPressed: onPressed,
-          child: child,
-        ),
-      );
-    }
+    final button = secondary
+        ? OutlinedButton(
+            onPressed: onPressed,
+            child: child,
+          )
+        : FilledButton(
+            onPressed: onPressed,
+            child: child,
+          );
 
     return SizedBox(
       width: double.infinity,
-      child: FilledButton(
-        onPressed: onPressed,
-        child: child,
-      ),
+      child: button,
     );
   }
 }
