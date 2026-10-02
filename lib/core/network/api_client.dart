@@ -34,6 +34,12 @@ class ApiClient {
       );
     }
 
+    if (!config.isApiTransportAllowed) {
+      throw StateError(
+        'API_BASE_URL must use HTTPS outside development/debug builds.',
+      );
+    }
+
     final base = config.apiBaseUrl.endsWith('/')
         ? config.apiBaseUrl.substring(0, config.apiBaseUrl.length - 1)
         : config.apiBaseUrl;

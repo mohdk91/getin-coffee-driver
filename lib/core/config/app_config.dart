@@ -38,6 +38,18 @@ class AppConfig {
 
   bool get isApiConfigured => apiBaseUrl.isNotEmpty;
 
+  Uri? get apiUri => isApiConfigured ? Uri.tryParse(apiBaseUrl) : null;
+
+  /// Development/debug builds may use HTTP for local/LAN testing, but any
+  /// staging/production/release configuration must use HTTPS.
+  bool get isApiTransportAllowed {
+    if (!isApiConfigured) return !requiresApi;
+    final uri = apiUri;
+    if (uri == null || !uri.hasScheme || uri.host.trim().isEmpty) return false;
+    if (!requiresApi) return uri.scheme == 'http' || uri.scheme == 'https';
+    return uri.scheme == 'https';
+  }
+
   /// Demo repositories are available only to development/test builds.
   /// A compiled release must never silently fall back to local sample data.
   bool get allowsDemo =>
