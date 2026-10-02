@@ -1,5 +1,4 @@
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/driver_customer_contact_models.dart';
@@ -25,7 +24,7 @@ class DriverCustomerContactRepositoryFactory {
         context ?? DriverApiContext.create(config),
       );
     }
-    return config.environment == AppEnvironment.development
+    return config.allowsDemo
         ? const DemoDriverCustomerContactRepository()
         : const UnavailableDriverCustomerContactRepository();
   }

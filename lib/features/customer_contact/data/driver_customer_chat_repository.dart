@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/driver_customer_chat_models.dart';
@@ -37,7 +36,7 @@ class DriverCustomerChatRepositoryFactory {
         context ?? DriverApiContext.create(config),
       );
     }
-    return config.environment == AppEnvironment.development
+    return config.allowsDemo
         ? const DemoDriverCustomerChatRepository()
         : const UnavailableDriverCustomerChatRepository();
   }

@@ -1,5 +1,4 @@
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/driver_profile_models.dart';
@@ -21,7 +20,7 @@ class DriverProfileRepositoryFactory {
         context ?? DriverApiContext.create(config),
       );
     }
-    return config.environment == AppEnvironment.development
+    return config.allowsDemo
         ? const DemoDriverProfileRepository()
         : const UnavailableDriverProfileRepository();
   }

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../location/domain/driver_location_models.dart';
 import '../../location/data/driver_location_sync_repository.dart';
 import '../domain/driver_background_location_models.dart';
@@ -267,7 +266,7 @@ class DriverBackgroundLocationControllerFactory {
       defaultValue: false,
     );
 
-    final useDeviceRunner = config.environment != AppEnvironment.development ||
+    final useDeviceRunner = !config.allowsDemo ||
         useRealDeviceGpsInDevelopment;
 
     return DriverBackgroundLocationController(

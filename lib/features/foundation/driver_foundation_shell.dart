@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
-import '../../core/config/app_environment.dart';
 import '../../core/data/driver_api_context.dart';
 import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
@@ -181,7 +180,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     } catch (_) {
       recovered = DriverRuntimeRecoverySnapshot.empty;
     }
-    if (widget.config.environment != AppEnvironment.development &&
+    if (!widget.config.allowsDemo &&
         widget.config.isApiConfigured) {
       try {
         recovered = await DriverRuntimeRecoveryApiRepository(
@@ -375,7 +374,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     final incoming = snapshot.activeDelivery;
     final recoveredLocal = _locallyAcceptedDelivery;
     final preserveRecoveredDemo =
-        widget.config.environment == AppEnvironment.development &&
+        widget.config.allowsDemo &&
             recoveredLocal != null &&
             incoming != null &&
             incoming.orderNumber != recoveredLocal.orderNumber;

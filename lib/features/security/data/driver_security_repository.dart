@@ -1,5 +1,4 @@
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/driver_token_store.dart';
@@ -39,7 +38,7 @@ class DriverSecurityRepositoryFactory {
       return ApiDriverSecurityRepository(apiContext);
     }
 
-    return config.environment == AppEnvironment.development
+    return config.allowsDemo
         ? DemoDriverSecurityRepository()
         : const UnavailableDriverSecurityRepository();
   }

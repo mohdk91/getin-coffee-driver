@@ -1,5 +1,4 @@
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
 import '../domain/driver_background_location_models.dart';
@@ -129,7 +128,7 @@ class DriverBackgroundLocationPolicyRepositoryFactory {
     AppConfig config, {
     DriverApiContext? context,
   }) {
-    if (config.environment == AppEnvironment.development) {
+    if (config.allowsDemo) {
       return const DemoDriverBackgroundLocationPolicyRepository();
     }
     return ApiDriverBackgroundLocationPolicyRepository(

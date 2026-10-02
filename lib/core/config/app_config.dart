@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'app_environment.dart';
 
 class AppConfig {
@@ -36,9 +38,14 @@ class AppConfig {
 
   bool get isApiConfigured => apiBaseUrl.isNotEmpty;
 
+  /// Demo repositories are available only to development/test builds.
+  /// A compiled release must never silently fall back to local sample data.
+  bool get allowsDemo =>
+      environment == AppEnvironment.development && !kReleaseMode;
+
   bool get isProduction => environment == AppEnvironment.production;
 
-  bool get requiresApi => environment != AppEnvironment.development;
+  bool get requiresApi => !allowsDemo;
 
   String get environmentBadge => environment.key.toUpperCase();
 }

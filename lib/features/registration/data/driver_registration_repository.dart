@@ -1,5 +1,4 @@
 import '../../../core/config/app_config.dart';
-import '../../../core/config/app_environment.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/device/driver_device_registrar.dart';
 import '../../../core/network/api_exception.dart';
@@ -26,7 +25,7 @@ class DriverRegistrationRepositoryFactory {
         context ?? DriverApiContext.create(config),
       );
     }
-    if (config.environment == AppEnvironment.development) {
+    if (config.allowsDemo) {
       return const DemoDriverRegistrationRepository();
     }
     return const UnavailableDriverRegistrationRepository();
