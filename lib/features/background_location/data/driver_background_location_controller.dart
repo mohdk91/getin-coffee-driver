@@ -19,6 +19,8 @@ class DriverBackgroundLocationController extends ChangeNotifier {
   DriverBackgroundLocationPolicy? _policy;
   StreamSubscription<DriverGpsFix>? _positionSubscription;
   DriverBackgroundLocationSettings? _runningSettings;
+  int? _serverSyncGeneration;
+  DriverGpsFix? _pendingServerFix;
   int _generation = 0;
   bool _disposed = false;
 
@@ -139,7 +141,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
             ),
           );
           if (decision.serverSyncAllowed) {
-            unawaited(_syncServerFix(fix, generation));
+            _queueServerFix(fix, generation);
           }
         },
         onError: (Object _) {
@@ -192,6 +194,34 @@ class DriverBackgroundLocationController extends ChangeNotifier {
     }
   }
 
+  void _queueServerFix(DriverGpsFix fix, int generation) {
+    if (_disposed || generation != _generation) return;
+
+    // Keep only the newest unsent fix while one upload is in flight. This
+    // avoids parallel GPS requests on slow networks without sending stale
+    // intermediate positions after connectivity recovers.
+    _pendingServerFix = fix;
+    if (_serverSyncGeneration == generation) return;
+
+    _serverSyncGeneration = generation;
+    unawaited(_drainServerFixes(generation));
+  }
+
+  Future<void> _drainServerFixes(int generation) async {
+    try {
+      while (!_disposed && generation == _generation) {
+        final fix = _pendingServerFix;
+        if (fix == null) return;
+        _pendingServerFix = null;
+        await _syncServerFix(fix, generation);
+      }
+    } finally {
+      if (_serverSyncGeneration == generation) {
+        _serverSyncGeneration = null;
+      }
+    }
+  }
+
   Future<void> _syncServerFix(DriverGpsFix fix, int generation) async {
     try {
       await locationSyncRepository.sync(fix);
@@ -219,6 +249,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
     String message = 'Background location is stopped.',
   }) async {
     ++_generation;
+    _pendingServerFix = null;
     await _stopSubscription();
     if (_disposed) return;
     _setSnapshot(
@@ -234,6 +265,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
   }
 
   Future<void> _stopSubscription() async {
+    _pendingServerFix = null;
     final subscription = _positionSubscription;
     _positionSubscription = null;
     _runningSettings = null;
@@ -250,6 +282,7 @@ class DriverBackgroundLocationController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     ++_generation;
+    _pendingServerFix = null;
     unawaited(_positionSubscription?.cancel());
     _positionSubscription = null;
     _runningSettings = null;
