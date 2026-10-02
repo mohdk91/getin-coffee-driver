@@ -49,7 +49,7 @@ android {
     defaultConfig {
         applicationId = "com.getincoffee.driver"
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
     }

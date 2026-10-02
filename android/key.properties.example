@@ -1,6 +1,6 @@
-# Copy this file to android/key.properties and fill it with the real Getin
-# release signing values. android/key.properties is already gitignored.
-storePassword=CHANGE_ME
-keyPassword=CHANGE_ME
-keyAlias=CHANGE_ME
-storeFile=/absolute/path/to/getin-driver-release.jks
+# Copy this file to android/key.properties and keep the real file private.
+# Use an absolute path to the upload keystore.
+storePassword=REPLACE_ME
+keyPassword=REPLACE_ME
+keyAlias=upload
+storeFile=/absolute/path/to/getin-upload-key.jks
