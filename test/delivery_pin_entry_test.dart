@@ -42,6 +42,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final arrived = find.widgetWithText(FilledButton, 'Arrived at Customer');
+    await _dragUntilBuilt(tester, arrived);
+    await tester.tap(arrived);
+    await tester.pumpAndSettle();
+
     final enterCode = find.text('Enter Delivery Code');
     await _dragUntilBuilt(tester, enterCode);
     await tester.tap(enterCode);

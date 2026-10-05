@@ -5,6 +5,7 @@ import '../../core/config/app_environment.dart';
 import '../../core/offline/driver_offline_safety.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/getin_action_button.dart';
 import '../../core/widgets/status_pill.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../active_delivery/driver_active_delivery_timeline_card.dart';
@@ -230,13 +231,48 @@ class _DriverDeliveryNavigationScreenState
     return true;
   }
 
+  Future<void> _markArrivedAtCustomer() async {
+    if (_timeline.currentState != DriverDeliveryState.outForDelivery) return;
+    if (!_ensureCriticalActionAvailable(DriverCriticalAction.arriveAtCustomer)) {
+      return;
+    }
+    if (!await _confirmArrivalAtCustomer()) return;
+    if (!mounted) return;
+    _advanceTimeline(
+      DriverDeliveryState.arrivedCustomer,
+      source: 'customer_arrival',
+      note: 'Driver confirmed arrival at the customer destination.',
+    );
+  }
+
+  bool get _customerArrivalConfirmed =>
+      _timeline.currentState == DriverDeliveryState.arrivedCustomer ||
+      _timeline.currentState == DriverDeliveryState.verificationPending ||
+      _timeline.currentState == DriverDeliveryState.delivered;
+
+  void _showArrivalRequired() {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          'Confirm Arrived at Customer before starting PIN or QR verification.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _openDeliveryPinVerification() async {
+    if (!_customerArrivalConfirmed) {
+      _showArrivalRequired();
+      return;
+    }
     if (!_ensureCriticalActionAvailable(
       DriverCriticalAction.customerVerification,
     )) {
       return;
     }
-    if (!await _confirmArrivalAtCustomer()) return;
     if (!mounted) return;
     if (!_advanceTimeline(
       DriverDeliveryState.verificationPending,
@@ -262,12 +298,15 @@ class _DriverDeliveryNavigationScreenState
   }
 
   Future<void> _openDeliveryQrVerification() async {
+    if (!_customerArrivalConfirmed) {
+      _showArrivalRequired();
+      return;
+    }
     if (!_ensureCriticalActionAvailable(
       DriverCriticalAction.customerVerification,
     )) {
       return;
     }
-    if (!await _confirmArrivalAtCustomer()) return;
     if (!mounted) return;
     if (!_advanceTimeline(
       DriverDeliveryState.verificationPending,
@@ -410,11 +449,24 @@ class _DriverDeliveryNavigationScreenState
                 const SizedBox(height: 14),
                 _GetinSupportCard(onPressed: _openSupport),
                 const SizedBox(height: 14),
+                if (!_timeline.currentState.isProblemState) ...[
+                  _CustomerArrivalCard(
+                    state: _timeline.currentState,
+                    onArrived: _timeline.currentState ==
+                            DriverDeliveryState.outForDelivery
+                        ? _markArrivedAtCustomer
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 if (_timeline.currentState.isProblemState)
                   _DeliveryStateLockedNotice(state: _timeline.currentState)
                 else
                   DriverDeliveryVerificationCard(
                     receipt: _deliveryVerification,
+                    enabled: _customerArrivalConfirmed,
+                    lockedMessage:
+                        'Arrive at the customer first. Verification stays locked until the arrival state is confirmed.',
                     onVerifyPin: _openDeliveryPinVerification,
                     onVerifyQr: _openDeliveryQrVerification,
                   ),
@@ -446,6 +498,82 @@ class _DriverDeliveryNavigationScreenState
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CustomerArrivalCard extends StatelessWidget {
+  final DriverDeliveryState state;
+  final VoidCallback? onArrived;
+
+  const _CustomerArrivalCard({
+    required this.state,
+    required this.onArrived,
+  });
+
+  bool get _arrived =>
+      state == DriverDeliveryState.arrivedCustomer ||
+      state == DriverDeliveryState.verificationPending ||
+      state == DriverDeliveryState.delivered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _arrived ? const Color(0xFFEAF4EF) : AppColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _arrived ? const Color(0xFFBDD6CA) : AppColors.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _arrived
+                    ? Icons.location_on_rounded
+                    : Icons.location_on_outlined,
+                color: _arrived ? AppColors.success : AppColors.green,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _arrived ? 'Arrived at Customer' : 'Customer arrival',
+                  style: const TextStyle(
+                    color: AppColors.greenDark,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            _arrived
+                ? 'Arrival is confirmed. You may now verify the handoff with the customer PIN or QR.'
+                : 'Confirm only after you reach the exact customer destination. This is a server-confirmed delivery state in production.',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 11,
+              height: 1.4,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 14),
+          GetinActionButton(
+            label: _arrived ? 'Arrival Confirmed' : 'Arrived at Customer',
+            icon: _arrived
+                ? Icons.check_circle_outline_rounded
+                : Icons.pin_drop_outlined,
+            secondary: _arrived,
+            onPressed: onArrived,
+          ),
+        ],
       ),
     );
   }

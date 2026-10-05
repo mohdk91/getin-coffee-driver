@@ -54,11 +54,15 @@ class _CountingCompletionRepository
 
 void main() {
   test('Task 38 names every server-confirmed critical action', () {
-    expect(DriverCriticalAction.values, hasLength(4));
+    expect(DriverCriticalAction.values, hasLength(5));
     expect(DriverCriticalAction.acceptOrder.label, 'Accept Order');
     expect(
       DriverCriticalAction.receivedFromBranch.label,
       'Received from Branch',
+    );
+    expect(
+      DriverCriticalAction.arriveAtCustomer.label,
+      'Arrived at Customer',
     );
     expect(
       DriverCriticalAction.customerVerification.label,

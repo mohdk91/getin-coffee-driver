@@ -8,12 +8,16 @@ class DriverDeliveryVerificationCard extends StatelessWidget {
   final DriverDeliveryPinReceipt? receipt;
   final VoidCallback onVerifyPin;
   final VoidCallback onVerifyQr;
+  final bool enabled;
+  final String? lockedMessage;
 
   const DriverDeliveryVerificationCard({
     super.key,
     required this.receipt,
     required this.onVerifyPin,
     required this.onVerifyQr,
+    this.enabled = true,
+    this.lockedMessage,
   });
 
   @override
@@ -56,7 +60,10 @@ class DriverDeliveryVerificationCard extends StatelessWidget {
           Text(
             verified
                 ? 'Customer handoff verified by ${viaQr ? 'QR' : 'PIN'}. Delivery completion is still a separate server-confirmed step.'
-                : 'Verify the handoff with the customer PIN or scan the customer QR. Both methods represent the same secure delivery verification.',
+                : enabled
+                    ? 'Verify the handoff with the customer PIN or scan the customer QR. Both methods represent the same secure delivery verification.'
+                    : lockedMessage ??
+                        'Confirm arrival at the customer before starting delivery verification.',
             style: const TextStyle(
               color: AppColors.muted,
               fontSize: 11,
@@ -76,14 +83,14 @@ class DriverDeliveryVerificationCard extends StatelessWidget {
             GetinActionButton(
               label: 'Enter Delivery Code',
               icon: Icons.pin_rounded,
-              onPressed: onVerifyPin,
+              onPressed: enabled ? onVerifyPin : null,
             ),
             const SizedBox(height: 10),
             GetinActionButton(
               label: 'Scan Customer QR',
               icon: Icons.qr_code_scanner_rounded,
               secondary: true,
-              onPressed: onVerifyQr,
+              onPressed: enabled ? onVerifyQr : null,
             ),
           ],
         ],

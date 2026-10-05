@@ -429,7 +429,7 @@ class _StartReceiptCard extends StatelessWidget {
           ),
           const SizedBox(height: 9),
           const Text(
-            'Customer delivery navigation is the next Driver task. No customer location/contact workflow has been started here.',
+            'Customer delivery navigation opens automatically when this screen is used inside the Driver workflow. The customer route remains tied to the same active order.',
             style: TextStyle(
               color: AppColors.muted,
               fontSize: 10.5,

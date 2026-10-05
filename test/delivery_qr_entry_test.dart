@@ -67,6 +67,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final arrived = find.widgetWithText(FilledButton, 'Arrived at Customer');
+    await _dragUntilBuilt(tester, arrived);
+    await tester.tap(arrived);
+    await tester.pumpAndSettle();
+
     final qr = find.text('Scan Customer QR');
     await _dragUntilBuilt(tester, qr);
     await tester.tap(qr);

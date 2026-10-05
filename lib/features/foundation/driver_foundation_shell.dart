@@ -774,12 +774,18 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   void _handleDeliveryStarted(DriverStartDeliveryReceipt receipt) {
-    _transitionActiveDelivery(
+    final transitioned = _transitionActiveDelivery(
       DriverDeliveryState.outForDelivery,
       source: 'start_delivery',
       demo: receipt.isDemo,
       note: 'Driver explicitly started customer delivery.',
     );
+    if (!transitioned || !mounted) return;
+
+    // Start Delivery is a workflow handoff. Replace the confirmation screen
+    // immediately with the customer destination flow so the driver does not
+    // have to back out and manually resume the same active order.
+    _openCustomerDelivery(replaceCurrent: true);
   }
 
   void _handleDeliveryException(DriverDeliveryExceptionReceipt receipt) {
@@ -837,6 +843,47 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     _persistRuntimeState();
   }
 
+  Widget _buildCustomerDeliveryScreen(
+    DriverActiveDeliverySummary delivery,
+    DriverDeliveryTimeline timeline,
+  ) {
+    return DriverDeliveryNavigationScreen(
+      delivery: delivery,
+      config: widget.config,
+      timeline: timeline,
+      launcher: widget.navigationLauncher,
+      preferenceStore: widget.navigationPreferenceStore,
+      completionRepository: _completionRepository,
+      supportRepository: _supportRepository,
+      onStateChanged: _handleDeliveryStateChanged,
+      onDeliveryException: _handleDeliveryException,
+      onDeliveryCompleted: _handleDeliveryCompleted,
+      criticalActionGate: _criticalActionGate,
+    );
+  }
+
+  void _openCustomerDelivery({bool replaceCurrent = false}) {
+    final rawDelivery = _currentActiveDelivery;
+    final delivery =
+        rawDelivery?.orderNumber == _completedOrderNumber ? null : rawDelivery;
+    if (delivery == null) return;
+
+    final timeline = _ensureTimeline(delivery);
+    final route = MaterialPageRoute<void>(
+      builder: (_) => _buildCustomerDeliveryScreen(delivery, timeline),
+    );
+
+    if (replaceCurrent) {
+      unawaited(Navigator.of(context).pushReplacement<void, void>(route));
+      return;
+    }
+
+    _pushOnce(
+      'customer:${delivery.orderNumber}',
+      (_) => _buildCustomerDeliveryScreen(delivery, timeline),
+    );
+  }
+
   void _openActiveDelivery() {
     final rawDelivery = _currentActiveDelivery;
     final delivery =
@@ -849,23 +896,14 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     final timeline = _ensureTimeline(delivery);
     final destinationFlow = timeline.currentState.usesDeliveryDestinationFlow;
 
+    if (destinationFlow) {
+      _openCustomerDelivery();
+      return;
+    }
+
     _pushOnce(
       'active:${delivery.orderNumber}',
-      (_) => destinationFlow
-          ? DriverDeliveryNavigationScreen(
-              delivery: delivery,
-              config: widget.config,
-              timeline: timeline,
-              launcher: widget.navigationLauncher,
-              preferenceStore: widget.navigationPreferenceStore,
-              completionRepository: _completionRepository,
-              supportRepository: _supportRepository,
-              onStateChanged: _handleDeliveryStateChanged,
-              onDeliveryException: _handleDeliveryException,
-              onDeliveryCompleted: _handleDeliveryCompleted,
-              criticalActionGate: _criticalActionGate,
-            )
-          : DriverRouteToBranchScreen(
+      (_) => DriverRouteToBranchScreen(
               config: widget.config,
               delivery: delivery,
               timeline: timeline,

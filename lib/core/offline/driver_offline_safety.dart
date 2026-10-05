@@ -3,6 +3,7 @@ typedef DriverCriticalActionGate = bool Function();
 enum DriverCriticalAction {
   acceptOrder,
   receivedFromBranch,
+  arriveAtCustomer,
   customerVerification,
   completeDelivery,
 }
@@ -12,6 +13,7 @@ extension DriverCriticalActionPresentation on DriverCriticalAction {
     return switch (this) {
       DriverCriticalAction.acceptOrder => 'Accept Order',
       DriverCriticalAction.receivedFromBranch => 'Received from Branch',
+      DriverCriticalAction.arriveAtCustomer => 'Arrived at Customer',
       DriverCriticalAction.customerVerification => 'Customer Verification',
       DriverCriticalAction.completeDelivery => 'Complete Delivery',
     };
