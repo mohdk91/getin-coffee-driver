@@ -828,6 +828,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       _completedOrderNumber = receipt.orderNumber;
       _lastCompletedDelivery = completedDelivery;
       _locallyAcceptedDelivery = null;
+      _activeTimeline = null;
       final snapshot = _homeSnapshot;
       if (snapshot != null &&
           snapshot.activeDelivery?.orderNumber == receipt.orderNumber) {
@@ -841,6 +842,20 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     });
     _syncBackgroundLocation();
     _persistRuntimeState();
+  }
+
+  void _returnHomeAfterDeliveryCompletion() {
+    if (!mounted) return;
+
+    setState(() => _tab = DriverTab.home);
+
+    // The delivery flow can contain Route to Branch, Start Delivery, customer
+    // destination, PIN/QR verification and completion routes. Pop every route
+    // above the Foundation shell itself so a completed order can never reveal
+    // a stale pickup/delivery screen underneath the receipt.
+    final shellRoute = ModalRoute.of(context);
+    if (shellRoute == null) return;
+    Navigator.of(context).popUntil((route) => identical(route, shellRoute));
   }
 
   Widget _buildCustomerDeliveryScreen(
@@ -858,6 +873,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       onStateChanged: _handleDeliveryStateChanged,
       onDeliveryException: _handleDeliveryException,
       onDeliveryCompleted: _handleDeliveryCompleted,
+      onReturnHome: _returnHomeAfterDeliveryCompletion,
       criticalActionGate: _criticalActionGate,
     );
   }

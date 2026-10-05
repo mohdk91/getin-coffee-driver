@@ -214,7 +214,10 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
             child: ListView(
               padding: EdgeInsets.fromLTRB(padding, 16, padding, 32),
               children: [
-                _Header(delivery: widget.delivery),
+                _Header(
+                  delivery: widget.delivery,
+                  verified: _receipt != null,
+                ),
                 const SizedBox(height: 14),
                 if (_repository.source == DriverDeliveryPinDataSource.demo) ...[
                   const _DemoNotice(),
@@ -282,8 +285,12 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
 
 class _Header extends StatelessWidget {
   final DriverActiveDeliverySummary delivery;
+  final bool verified;
 
-  const _Header({required this.delivery});
+  const _Header({
+    required this.delivery,
+    required this.verified,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -308,9 +315,9 @@ class _Header extends StatelessWidget {
                   ),
                 ),
               ),
-              const StatusPill(
-                label: 'PIN REQUIRED',
-                tone: StatusTone.warning,
+              StatusPill(
+                label: verified ? 'PIN VERIFIED' : 'PIN REQUIRED',
+                tone: verified ? StatusTone.success : StatusTone.warning,
               ),
             ],
           ),
@@ -635,7 +642,7 @@ class _CompletionSafetyCard extends StatelessWidget {
           Expanded(
             child: Text(
               verified
-                  ? 'PIN verification is complete. The order is not marked Delivered here; Complete Delivery remains a separate server-confirmed action for Driver Task #22.'
+                  ? 'PIN verification is complete. The order is not marked Delivered here; Complete Delivery remains a separate server-confirmed action.'
                   : 'Complete Delivery stays locked until customer verification succeeds. Saving a code locally must never bypass this requirement.',
               style: const TextStyle(
                 color: AppColors.greenDark,

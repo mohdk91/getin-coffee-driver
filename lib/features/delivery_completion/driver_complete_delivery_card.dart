@@ -16,6 +16,7 @@ class DriverCompleteDeliveryCard extends StatefulWidget {
   final bool stateAllowsCompletion;
   final ValueChanged<DriverDeliveryCompletionReceipt>? onCompleted;
   final DriverCriticalActionGate? criticalActionGate;
+  final VoidCallback? onReturnHome;
 
   const DriverCompleteDeliveryCard({
     super.key,
@@ -25,6 +26,7 @@ class DriverCompleteDeliveryCard extends StatefulWidget {
     this.stateAllowsCompletion = true,
     this.onCompleted,
     this.criticalActionGate,
+    this.onReturnHome,
   });
 
   @override
@@ -83,7 +85,10 @@ class _DriverCompleteDeliveryCardState
   Widget build(BuildContext context) {
     final receipt = _receipt;
     if (receipt != null) {
-      return _CompletedDeliveryReceipt(receipt: receipt);
+      return _CompletedDeliveryReceipt(
+        receipt: receipt,
+        onReturnHome: widget.onReturnHome,
+      );
     }
 
     final verified = widget.verification != null;
@@ -200,8 +205,12 @@ class _DriverCompleteDeliveryCardState
 
 class _CompletedDeliveryReceipt extends StatelessWidget {
   final DriverDeliveryCompletionReceipt receipt;
+  final VoidCallback? onReturnHome;
 
-  const _CompletedDeliveryReceipt({required this.receipt});
+  const _CompletedDeliveryReceipt({
+    required this.receipt,
+    required this.onReturnHome,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +290,7 @@ class _CompletedDeliveryReceipt extends StatelessWidget {
             label: 'Back to Driver Home',
             icon: Icons.home_rounded,
             secondary: true,
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: onReturnHome ?? () => Navigator.of(context).maybePop(),
           ),
         ],
       ),

@@ -50,6 +50,7 @@ class DriverDeliveryNavigationScreen extends StatefulWidget {
   final ValueChanged<DriverDeliveryState>? onStateChanged;
   final ValueChanged<DriverDeliveryExceptionReceipt>? onDeliveryException;
   final ValueChanged<DriverDeliveryCompletionReceipt>? onDeliveryCompleted;
+  final VoidCallback? onReturnHome;
   final DriverNavigationLauncher? launcher;
   final DriverNavigationPreferenceStore? preferenceStore;
   final DriverCriticalActionGate? criticalActionGate;
@@ -73,6 +74,7 @@ class DriverDeliveryNavigationScreen extends StatefulWidget {
     this.onStateChanged,
     this.onDeliveryException,
     this.onDeliveryCompleted,
+    this.onReturnHome,
     this.launcher,
     this.preferenceStore,
     this.criticalActionGate,
@@ -432,7 +434,14 @@ class _DriverDeliveryNavigationScreenState
                     onRetry: _loadDestination,
                   ),
                 const SizedBox(height: 14),
-                DriverActiveDeliveryTimelineCard(timeline: _timeline),
+                DriverActiveDeliveryTimelineCard(
+                  timeline: _timeline,
+                  currentStateLabelOverride: _deliveryVerification != null &&
+                          _timeline.currentState ==
+                              DriverDeliveryState.verificationPending
+                      ? 'Verification complete'
+                      : null,
+                ),
                 const SizedBox(height: 14),
                 DriverNavigationCard(
                   target: _navigationTarget,
@@ -488,6 +497,7 @@ class _DriverDeliveryNavigationScreenState
                     stateAllowsCompletion: _timeline.currentState ==
                         DriverDeliveryState.verificationPending,
                     onCompleted: _handleDeliveryCompleted,
+                    onReturnHome: widget.onReturnHome,
                     criticalActionGate: widget.criticalActionGate,
                   )
                 else

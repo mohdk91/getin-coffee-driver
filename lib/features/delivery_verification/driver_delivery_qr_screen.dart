@@ -198,7 +198,10 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
             child: ListView(
               padding: EdgeInsets.fromLTRB(padding, 16, padding, 32),
               children: [
-                _QrHeader(delivery: widget.delivery),
+                _QrHeader(
+                  delivery: widget.delivery,
+                  verified: verified,
+                ),
                 const SizedBox(height: 14),
                 if (_repository.source == DriverDeliveryQrDataSource.demo) ...[
                   const _DemoQrNotice(),
@@ -265,8 +268,12 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
 
 class _QrHeader extends StatelessWidget {
   final DriverActiveDeliverySummary delivery;
+  final bool verified;
 
-  const _QrHeader({required this.delivery});
+  const _QrHeader({
+    required this.delivery,
+    required this.verified,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -291,9 +298,9 @@ class _QrHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              const StatusPill(
-                label: 'QR VERIFICATION',
-                tone: StatusTone.warning,
+              StatusPill(
+                label: verified ? 'QR VERIFIED' : 'QR VERIFICATION',
+                tone: verified ? StatusTone.success : StatusTone.warning,
               ),
             ],
           ),
@@ -610,7 +617,7 @@ class _QrSafetyCard extends StatelessWidget {
           Expanded(
             child: Text(
               verified
-                  ? 'QR verification is complete. The order is not marked Delivered here; Complete Delivery remains a separate server-confirmed action for Driver Task #22.'
+                  ? 'QR verification is complete. The order is not marked Delivered here; Complete Delivery remains a separate server-confirmed action.'
                   : 'Complete Delivery stays locked until customer PIN or QR verification succeeds. QR and PIN are alternative verification methods for the same handoff.',
               style: const TextStyle(
                 color: AppColors.greenDark,

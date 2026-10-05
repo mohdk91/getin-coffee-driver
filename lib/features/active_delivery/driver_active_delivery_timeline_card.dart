@@ -6,10 +6,12 @@ import 'domain/driver_delivery_state_machine.dart';
 
 class DriverActiveDeliveryTimelineCard extends StatelessWidget {
   final DriverDeliveryTimeline timeline;
+  final String? currentStateLabelOverride;
 
   const DriverActiveDeliveryTimelineCard({
     super.key,
     required this.timeline,
+    this.currentStateLabelOverride,
   });
 
   @override
@@ -38,7 +40,8 @@ class DriverActiveDeliveryTimelineCard extends StatelessWidget {
                 ),
               ),
               StatusPill(
-                label: current.label.toUpperCase(),
+                label: (currentStateLabelOverride ?? current.label)
+                    .toUpperCase(),
                 tone: current.isProblemState
                     ? StatusTone.warning
                     : StatusTone.success,
@@ -61,6 +64,8 @@ class DriverActiveDeliveryTimelineCard extends StatelessWidget {
               state: state,
               current: current == state,
               completed: timeline.hasVisited(state) && current != state,
+              currentLabelOverride:
+                  current == state ? currentStateLabelOverride : null,
             ),
           ),
           if (current.isProblemState) ...[
@@ -94,11 +99,13 @@ class _TimelineStep extends StatelessWidget {
   final DriverDeliveryState state;
   final bool current;
   final bool completed;
+  final String? currentLabelOverride;
 
   const _TimelineStep({
     required this.state,
     required this.current,
     required this.completed,
+    this.currentLabelOverride,
   });
 
   @override
@@ -134,7 +141,7 @@ class _TimelineStep extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              state.label,
+              currentLabelOverride ?? state.label,
               style: TextStyle(
                 color: current ? AppColors.greenDark : AppColors.muted,
                 fontSize: 11.5,
