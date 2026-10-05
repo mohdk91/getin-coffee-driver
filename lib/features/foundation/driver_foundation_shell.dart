@@ -425,70 +425,77 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     final scenario = await showModalBottomSheet<_IncomingOrderUatScenario>(
       context: context,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Incoming order UAT',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
+      isScrollControlled: true,
+      builder: (context) {
+        final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Incoming order UAT',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Local-only scenarios. Nothing here creates or changes a production order.',
+                    style: TextStyle(fontSize: 12.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline_rounded),
+                    title: const Text('Idle driver • broadcast offer'),
+                    subtitle: const Text(
+                      'Reset local UAT delivery state, then receive and accept a new offer.',
+                    ),
+                    onTap: () => Navigator.of(context).pop(
+                      _IncomingOrderUatScenario.idleBroadcast,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.block_rounded),
+                    title: const Text('Active delivery • offer blocked'),
+                    subtitle: const Text(
+                      'Seed one active delivery and confirm another broadcast is blocked.',
+                    ),
+                    onTap: () => Navigator.of(context).pop(
+                      _IncomingOrderUatScenario.activeDeliveryBlocked,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.groups_2_outlined),
+                    title: const Text('Broadcast race'),
+                    subtitle: const Text(
+                      'Another demo driver already owns the order; acceptance must fail safely.',
+                    ),
+                    onTap: () => Navigator.of(context).pop(
+                      _IncomingOrderUatScenario.alreadyTaken,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.timer_outlined),
+                    title: const Text('Offer expiry'),
+                    subtitle: const Text(
+                      'Reset to idle and run an eight-second visual expiry test.',
+                    ),
+                    onTap: () => Navigator.of(context).pop(
+                      _IncomingOrderUatScenario.expires,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Local-only scenarios. Nothing here creates or changes a production order.',
-                style: TextStyle(fontSize: 12.5, height: 1.4),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                leading: const Icon(Icons.person_outline_rounded),
-                title: const Text('Idle driver • broadcast offer'),
-                subtitle: const Text(
-                  'Reset local UAT delivery state, then receive and accept a new offer.',
-                ),
-                onTap: () => Navigator.of(context).pop(
-                  _IncomingOrderUatScenario.idleBroadcast,
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.block_rounded),
-                title: const Text('Active delivery • offer blocked'),
-                subtitle: const Text(
-                  'Seed one active delivery and confirm another broadcast is blocked.',
-                ),
-                onTap: () => Navigator.of(context).pop(
-                  _IncomingOrderUatScenario.activeDeliveryBlocked,
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.groups_2_outlined),
-                title: const Text('Broadcast race'),
-                subtitle: const Text(
-                  'Another demo driver already owns the order; acceptance must fail safely.',
-                ),
-                onTap: () => Navigator.of(context).pop(
-                  _IncomingOrderUatScenario.alreadyTaken,
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.timer_outlined),
-                title: const Text('Offer expiry'),
-                subtitle: const Text(
-                  'Reset to idle and run an eight-second visual expiry test.',
-                ),
-                onTap: () => Navigator.of(context).pop(
-                  _IncomingOrderUatScenario.expires,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     if (!mounted || scenario == null) {
