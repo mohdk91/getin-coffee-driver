@@ -42,7 +42,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Ready for your shift?'), findsOneWidget);
+    expect(find.text('Delivery in progress'), findsOneWidget);
     expect(find.text('Online'), findsOneWidget);
     expect(find.text('ACTIVE DELIVERY'), findsOneWidget);
     expect(find.text('GD-2481'), findsOneWidget);

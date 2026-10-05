@@ -25,6 +25,7 @@ import '../eligibility/driver_order_eligibility_screen.dart';
 import '../home/data/driver_home_repository.dart';
 import '../home/domain/driver_home_models.dart';
 import '../home/driver_home_dashboard.dart';
+import '../incoming_orders/driver_incoming_order_capacity.dart';
 import '../incoming_orders/driver_incoming_order_offer_dialog.dart';
 import '../location/data/driver_location_repository.dart';
 import '../location/driver_location_service_region_screen.dart';
@@ -411,6 +412,11 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     _persistRuntimeState();
   }
 
+  DriverIncomingOrderCapacity get _incomingOrderCapacity =>
+      DriverIncomingOrderCapacity(
+        activeOrderCount: _hasRunningActiveDelivery ? 1 : 0,
+      );
+
   Future<void> _openIncomingOrderUatMenu() async {
     if (!widget.config.uatDemoEnabled || _incomingOfferVisible) {
       return;
@@ -440,12 +446,23 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
               ),
               const SizedBox(height: 14),
               ListTile(
-                leading: const Icon(Icons.campaign_rounded),
-                title: const Text('Broadcast offer'),
-                subtitle:
-                    const Text('Accept successfully and enter pickup flow.'),
+                leading: const Icon(Icons.person_outline_rounded),
+                title: const Text('Idle driver • broadcast offer'),
+                subtitle: const Text(
+                  'Reset local UAT delivery state, then receive and accept a new offer.',
+                ),
                 onTap: () => Navigator.of(context).pop(
-                  _IncomingOrderUatScenario.broadcastAvailable,
+                  _IncomingOrderUatScenario.idleBroadcast,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.block_rounded),
+                title: const Text('Active delivery • offer blocked'),
+                subtitle: const Text(
+                  'Seed one active delivery and confirm another broadcast is blocked.',
+                ),
+                onTap: () => Navigator.of(context).pop(
+                  _IncomingOrderUatScenario.activeDeliveryBlocked,
                 ),
               ),
               ListTile(
@@ -462,7 +479,8 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                 leading: const Icon(Icons.timer_outlined),
                 title: const Text('Offer expiry'),
                 subtitle: const Text(
-                    'Eight-second countdown for visual expiry testing.'),
+                  'Reset to idle and run an eight-second visual expiry test.',
+                ),
                 onTap: () => Navigator.of(context).pop(
                   _IncomingOrderUatScenario.expires,
                 ),
@@ -476,15 +494,100 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     if (!mounted || scenario == null) {
       return;
     }
+
+    if (scenario == _IncomingOrderUatScenario.activeDeliveryBlocked) {
+      await _prepareIncomingOrderUatActiveDriver();
+    } else {
+      await _prepareIncomingOrderUatIdleDriver();
+    }
+    if (!mounted) return;
     await _showIncomingOrderUatScenario(scenario);
+  }
+
+  Future<void> _prepareIncomingOrderUatIdleDriver() async {
+    if (!widget.config.uatDemoEnabled || !mounted) return;
+
+    setState(() {
+      _locallyAcceptedDelivery = null;
+      _activeTimeline = null;
+      _completedOrderNumber = null;
+      final snapshot = _homeSnapshot;
+      if (snapshot != null) {
+        _homeSnapshot = snapshot.copyWith(
+          clearActiveDelivery: true,
+          updatedAt: DateTime.now(),
+        );
+      }
+      _homeReloadToken += 1;
+    });
+    _syncBackgroundLocation();
+
+    if (_runtimeRecoveryLoaded) {
+      await _recoveryStore.save(
+        DriverRuntimeRecoverySnapshot(
+          activeDelivery: null,
+          completedOrderNumber: null,
+          lastSuccessfulSyncAt: _lastSuccessfulSyncAt,
+        ),
+      );
+    }
+  }
+
+  Future<void> _prepareIncomingOrderUatActiveDriver() async {
+    if (!widget.config.uatDemoEnabled || !mounted) return;
+
+    const active = DriverActiveDeliverySummary(
+      orderNumber: 'GD-UAT-ACTIVE',
+      status: 'Going to branch • Demo',
+      pickupBranch: 'Stanley',
+      destinationArea: 'San Stefano',
+      etaMinutes: 8,
+      state: DriverDeliveryState.goingToBranch,
+    );
+    final timeline = DriverDeliveryStateMachine.seed(
+      orderNumber: active.orderNumber,
+      currentState: DriverDeliveryState.goingToBranch,
+      source: 'uat_active_capacity',
+    );
+
+    setState(() {
+      _completedOrderNumber = null;
+      _locallyAcceptedDelivery = active;
+      _activeTimeline = timeline;
+      final snapshot = _homeSnapshot;
+      if (snapshot != null) {
+        _homeSnapshot = snapshot.copyWith(
+          activeDelivery: active,
+          availableOrders: 0,
+          updatedAt: DateTime.now(),
+        );
+      }
+      _homeReloadToken += 1;
+    });
+    _syncBackgroundLocation();
+
+    if (_runtimeRecoveryLoaded) {
+      await _recoveryStore.save(
+        DriverRuntimeRecoverySnapshot(
+          activeDelivery: active,
+          completedOrderNumber: null,
+          lastSuccessfulSyncAt: _lastSuccessfulSyncAt,
+        ),
+      );
+    }
   }
 
   DriverOrderCandidate _incomingOrderUatCandidate(
     _IncomingOrderUatScenario scenario,
   ) {
     final alreadyTaken = scenario == _IncomingOrderUatScenario.alreadyTaken;
+    final orderNumber = switch (scenario) {
+      _IncomingOrderUatScenario.alreadyTaken => 'GD-3102',
+      _IncomingOrderUatScenario.expires => 'GD-UAT-9003',
+      _ => 'GD-UAT-9001',
+    };
     return DriverOrderCandidate(
-      orderNumber: alreadyTaken ? 'GD-3102' : 'GD-UAT-9001',
+      orderNumber: orderNumber,
       pickupBranch: 'Stanley',
       region: 'East Alexandria',
       zone: 'San Stefano',
@@ -504,6 +607,12 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     _IncomingOrderUatScenario scenario,
   ) async {
     if (!mounted || _incomingOfferVisible) {
+      return;
+    }
+
+    final initialCapacity = _incomingOrderCapacity;
+    if (!initialCapacity.canReceiveOffer) {
+      await _showIncomingOrderCapacityBlockedDialog(initialCapacity);
       return;
     }
 
@@ -540,6 +649,12 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       return;
     }
 
+    final acceptanceCapacity = _incomingOrderCapacity;
+    if (!acceptanceCapacity.canReceiveOffer) {
+      _showIncomingOrderMessage(acceptanceCapacity.blockedMessage);
+      return;
+    }
+
     if (!driverCriticalActionAllowed(_criticalActionGate)) {
       _showIncomingOrderMessage(
         DriverCriticalAction.acceptOrder.offlineMessage,
@@ -557,6 +672,31 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       _handleOrderAccepted(DriverAcceptedOrder(order: order, result: result));
     }
     _showIncomingOrderMessage(result.message);
+  }
+
+  Future<void> _showIncomingOrderCapacityBlockedDialog(
+    DriverIncomingOrderCapacity capacity,
+  ) async {
+    if (!mounted) return;
+    final active = _currentActiveDelivery;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.block_rounded),
+        title: const Text('New order blocked'),
+        content: Text(
+          active == null
+              ? capacity.blockedMessage
+              : '${active.orderNumber} is already in progress. ${capacity.blockedMessage}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showIncomingOrderMessage(String message) {
@@ -854,6 +994,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         config: widget.config,
         completedOrderNumber: _completedOrderNumber,
         unreadNotificationsOverride: _homeSnapshot?.unreadNotifications,
+        activeDeliveryOverride: activeDelivery,
         repository: _homeRepository,
         availabilityRepository: _availabilityRepository,
         eligibilityRepository: _eligibilityRepository,
@@ -906,4 +1047,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 }
 
-enum _IncomingOrderUatScenario { broadcastAvailable, alreadyTaken, expires }
+enum _IncomingOrderUatScenario {
+  idleBroadcast,
+  activeDeliveryBlocked,
+  alreadyTaken,
+  expires,
+}

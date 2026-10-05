@@ -234,49 +234,38 @@ class _DriverIncomingOrderOfferDialogState
                   value: order.destinationArea,
                 ),
                 const SizedBox(height: 18),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final narrow = constraints.maxWidth < 360;
-                    final metrics = [
-                      _Metric(
-                        icon: Icons.schedule_rounded,
-                        label: 'ETA',
-                        value: order.estimatedDurationMinutes > 0
-                            ? '~${order.estimatedDurationMinutes} min'
-                            : '—',
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _Metric(
+                          icon: Icons.schedule_rounded,
+                          label: 'ETA',
+                          value: order.estimatedDurationMinutes > 0
+                              ? '~${order.estimatedDurationMinutes} min'
+                              : '—',
+                        ),
                       ),
-                      _Metric(
-                        icon: Icons.shopping_bag_outlined,
-                        label: 'Bags',
-                        value: '${order.bagCount}',
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: _Metric(
+                          icon: Icons.shopping_bag_outlined,
+                          label: 'Bags',
+                          value: '${order.bagCount}',
+                        ),
                       ),
-                      _Metric(
-                        icon: Icons.account_balance_wallet_outlined,
-                        label: 'Earning',
-                        value:
-                            '${order.currencyCode} ${order.estimatedDriverEarning.toStringAsFixed(2)}',
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: _Metric(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'Earning',
+                          value:
+                              '${order.currencyCode} ${order.estimatedDriverEarning.toStringAsFixed(2)}',
+                        ),
                       ),
-                    ];
-                    if (narrow) {
-                      return Column(
-                        children: [
-                          for (final metric in metrics) ...[
-                            metric,
-                            if (metric != metrics.last)
-                              const SizedBox(height: 8),
-                          ],
-                        ],
-                      );
-                    }
-                    return Row(
-                      children: [
-                        for (var i = 0; i < metrics.length; i++) ...[
-                          Expanded(child: metrics[i]),
-                          if (i != metrics.length - 1) const SizedBox(width: 8),
-                        ],
-                      ],
-                    );
-                  },
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(

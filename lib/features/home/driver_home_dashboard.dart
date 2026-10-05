@@ -22,6 +22,7 @@ class DriverHomeDashboard extends StatefulWidget {
   final VoidCallback? onOpenRatingsReviews;
   final String? completedOrderNumber;
   final int? unreadNotificationsOverride;
+  final DriverActiveDeliverySummary? activeDeliveryOverride;
   final int reloadToken;
   final VoidCallback? onLoadFinished;
 
@@ -38,6 +39,7 @@ class DriverHomeDashboard extends StatefulWidget {
     this.onOpenRatingsReviews,
     this.completedOrderNumber,
     this.unreadNotificationsOverride,
+    this.activeDeliveryOverride,
     this.reloadToken = 0,
     this.onLoadFinished,
   });
@@ -124,13 +126,15 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
   Future<DriverHomeSnapshot> _withEligibilityCount(
     DriverHomeSnapshot snapshot,
   ) async {
+    final hasActiveDelivery = widget.activeDeliveryOverride != null ||
+        snapshot.activeDelivery != null;
     final result = await widget.eligibilityRepository.evaluate(
       availability: snapshot.availability,
-      activeOrderCount: snapshot.activeDelivery == null ? 0 : 1,
+      activeOrderCount: hasActiveDelivery ? 1 : 0,
       driverApproved: true,
     );
 
-    if (!result.isSuccess) {
+    if (!result.isSuccess || hasActiveDelivery) {
       return snapshot.copyWith(availableOrders: 0);
     }
 
@@ -150,7 +154,8 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
     final result = await widget.availabilityRepository.changeAvailability(
       currentState: snapshot.availability,
       requestedState: requested,
-      hasActiveDelivery: snapshot.activeDelivery != null,
+      hasActiveDelivery: widget.activeDeliveryOverride != null ||
+          snapshot.activeDelivery != null,
     );
 
     if (!mounted) return;
@@ -201,11 +206,18 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
     }
 
     final storedSnapshot = _snapshot!;
-    final snapshot = widget.unreadNotificationsOverride == null
+    var snapshot = widget.unreadNotificationsOverride == null
         ? storedSnapshot
         : storedSnapshot.copyWith(
             unreadNotifications: widget.unreadNotificationsOverride,
           );
+    final activeDeliveryOverride = widget.activeDeliveryOverride;
+    if (activeDeliveryOverride != null) {
+      snapshot = snapshot.copyWith(
+        activeDelivery: activeDeliveryOverride,
+        availableOrders: 0,
+      );
+    }
     final padding = Responsive.horizontalPadding(context);
 
     return RefreshIndicator(
@@ -330,9 +342,11 @@ class _HeaderSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Ready for your shift?',
-            style: TextStyle(
+          Text(
+            snapshot.activeDelivery == null
+                ? 'Ready for your shift?'
+                : 'Delivery in progress',
+            style: const TextStyle(
               color: AppColors.white,
               fontSize: 25,
               height: 1.08,
@@ -342,14 +356,16 @@ class _HeaderSummary extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           Text(
-            switch (snapshot.availability) {
-              DriverAvailabilityState.online =>
-                'You are available for eligible delivery jobs. Active delivery work remains your priority.',
-              DriverAvailabilityState.offline =>
-                'You are offline and will not receive new delivery jobs.',
-              DriverAvailabilityState.onBreak =>
-                'You are on break and temporarily unavailable for new delivery jobs.',
-            },
+            snapshot.activeDelivery != null
+                ? 'Complete ${snapshot.activeDelivery!.orderNumber} before receiving another delivery offer.'
+                : switch (snapshot.availability) {
+                    DriverAvailabilityState.online =>
+                      'You are available for eligible delivery jobs.',
+                    DriverAvailabilityState.offline =>
+                      'You are offline and will not receive new delivery jobs.',
+                    DriverAvailabilityState.onBreak =>
+                      'You are on break and temporarily unavailable for new delivery jobs.',
+                  },
             style: const TextStyle(
               color: AppColors.beige,
               fontSize: 12.5,

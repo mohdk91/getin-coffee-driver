@@ -39,7 +39,7 @@ void main() {
     expect(find.text('Orders'), findsOneWidget);
     expect(find.text('Earnings'), findsOneWidget);
     expect(find.text('Profile'), findsOneWidget);
-    expect(find.text('Ready for your shift?'), findsOneWidget);
+    expect(find.text('Delivery in progress'), findsOneWidget);
     expect(find.text('Active delivery • GD-2481'), findsOneWidget);
 
     await tester.tap(find.text('Orders'));
