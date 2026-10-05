@@ -53,6 +53,9 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
       widget.historyRepository ??
           DriverOrderHistoryRepositoryFactory.create(widget.config);
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode(
+    debugLabel: 'driver-order-history-search',
+  );
   DriverOrderHistorySnapshot? _snapshot;
   String? _errorMessage;
   bool _loading = true;
@@ -67,9 +70,20 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
   }
 
   @override
+  void didUpdateWidget(covariant DriverOrderHistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activeDelivery?.orderNumber !=
+            widget.activeDelivery?.orderNumber &&
+        widget.activeDelivery != null) {
+      _searchFocusNode.unfocus();
+    }
+  }
+
+  @override
   void dispose() {
     _tabs.dispose();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -288,6 +302,8 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
                   Expanded(
                     child: TextField(
                       controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: false,
                       onChanged: (_) => setState(() {}),
                       textInputAction: TextInputAction.search,
                       decoration: const InputDecoration(
@@ -311,21 +327,39 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
             ],
           ),
         ),
-        TabBar(
-          controller: _tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelColor: AppColors.greenDark,
-          unselectedLabelColor: AppColors.muted,
-          indicatorColor: AppColors.green,
-          labelStyle:
-              const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-          tabs: const [
-            Tab(text: 'New / Available'),
-            Tab(text: 'Active / On Delivery'),
-            Tab(text: 'Delivered'),
-            Tab(text: 'Cancelled'),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 520;
+            return TabBar(
+              controller: _tabs,
+              isScrollable: !compact,
+              tabAlignment:
+                  compact ? TabAlignment.fill : TabAlignment.start,
+              labelPadding: compact
+                  ? const EdgeInsets.symmetric(horizontal: 3)
+                  : null,
+              labelColor: AppColors.greenDark,
+              unselectedLabelColor: AppColors.muted,
+              indicatorColor: AppColors.green,
+              labelStyle: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: compact ? 10.5 : 12,
+              ),
+              tabs: compact
+                  ? const [
+                      Tab(text: 'New'),
+                      Tab(text: 'Active'),
+                      Tab(text: 'Delivered'),
+                      Tab(text: 'Cancelled'),
+                    ]
+                  : const [
+                      Tab(text: 'New / Available'),
+                      Tab(text: 'Active / On Delivery'),
+                      Tab(text: 'Delivered'),
+                      Tab(text: 'Cancelled'),
+                    ],
+            );
+          },
         ),
         Expanded(
           child: TabBarView(

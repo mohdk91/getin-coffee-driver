@@ -722,6 +722,10 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       return;
     }
 
+    // Acceptance is a task handoff, not just a list-state change. Dismiss any
+    // keyboard/focus left behind by the Orders UI before entering the route.
+    FocusManager.instance.primaryFocus?.unfocus();
+
     var timeline = DriverDeliveryStateMachine.seed(
       orderNumber: acceptedOrder.order.orderNumber,
       currentState: DriverDeliveryState.accepted,
@@ -752,6 +756,12 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     });
     _syncBackgroundLocation();
     _persistRuntimeState();
+
+    // Acceptance happens from an interaction callback after any offer dialog
+    // has already been popped. The state above is synchronously available, so
+    // hand off immediately instead of relying on a later frame callback. This
+    // keeps the accepted-order route deterministic in both UAT and production.
+    _openActiveDelivery();
   }
 
   void _handlePickupReceived(DriverBranchPickupReceipt receipt) {
