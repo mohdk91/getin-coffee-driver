@@ -33,6 +33,9 @@ class DriverHomeRepositoryFactory {
     AppConfig config, {
     DriverApiContext? context,
   }) {
+    if (config.uatDemoEnabled) {
+      return const UatDriverHomeRepository();
+    }
     if (config.allowsDemo) {
       return const DemoDriverHomeRepository();
     }
@@ -96,6 +99,35 @@ class ApiDriverHomeRepository implements DriverHomeRepository {
         'on_break' => DriverAvailabilityState.onBreak,
         _ => DriverAvailabilityState.offline,
       };
+}
+
+class UatDriverHomeRepository implements DriverHomeRepository {
+  const UatDriverHomeRepository();
+
+  @override
+  DriverHomeDataSource get source => DriverHomeDataSource.demo;
+
+  @override
+  Future<DriverHomeLoadResult> loadDashboard() async {
+    await Future<void>.delayed(const Duration(milliseconds: 160));
+
+    return DriverHomeLoadResult.success(
+      DriverHomeSnapshot(
+        availability: DriverAvailabilityState.online,
+        activeDelivery: null,
+        availableOrders: 0,
+        completedToday: 0,
+        earningsToday: 0,
+        currencyCode: 'EGP',
+        rating: 4.9,
+        ratingCount: 126,
+        unreadNotifications: 0,
+        gpsState: DriverGpsState.ready,
+        internetConnected: true,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
 }
 
 class DemoDriverHomeRepository implements DriverHomeRepository {

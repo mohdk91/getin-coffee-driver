@@ -6,11 +6,13 @@ class AppConfig {
   final AppEnvironment environment;
   final String apiBaseUrl;
   final Duration requestTimeout;
+  final bool uatDemoRequested;
 
   const AppConfig({
     required this.environment,
     required this.apiBaseUrl,
     this.requestTimeout = const Duration(seconds: 20),
+    this.uatDemoRequested = false,
   });
 
   factory AppConfig.fromEnvironment() {
@@ -26,6 +28,10 @@ class AppConfig {
       'API_TIMEOUT_SECONDS',
       defaultValue: 20,
     );
+    const uatDemoRequested = bool.fromEnvironment(
+      'UAT_DEMO',
+      defaultValue: false,
+    );
 
     return AppConfig(
       environment: AppEnvironment.parse(environmentValue),
@@ -33,6 +39,7 @@ class AppConfig {
       requestTimeout: const Duration(
         seconds: timeoutSeconds > 0 ? timeoutSeconds : 20,
       ),
+      uatDemoRequested: uatDemoRequested,
     );
   }
 
@@ -56,6 +63,11 @@ class AppConfig {
       environment == AppEnvironment.development && !kReleaseMode;
 
   bool get isProduction => environment == AppEnvironment.production;
+
+  /// Explicit visual-UAT controls are available only in development/debug.
+  /// Passing UAT_DEMO=true can never activate them in staging, production,
+  /// or a compiled release build.
+  bool get uatDemoEnabled => uatDemoRequested && allowsDemo && !isApiConfigured;
 
   bool get requiresApi => !allowsDemo;
 

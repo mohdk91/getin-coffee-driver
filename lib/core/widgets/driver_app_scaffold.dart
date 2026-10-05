@@ -20,6 +20,7 @@ class DriverAppScaffold extends StatelessWidget {
   final DateTime? lastSuccessfulSyncAt;
   final bool retryingConnection;
   final VoidCallback? onRetryConnection;
+  final VoidCallback? onUatIncomingOrder;
 
   const DriverAppScaffold({
     super.key,
@@ -36,6 +37,7 @@ class DriverAppScaffold extends StatelessWidget {
     this.lastSuccessfulSyncAt,
     this.retryingConnection = false,
     this.onRetryConnection,
+    this.onUatIncomingOrder,
   });
 
   @override
@@ -49,11 +51,44 @@ class DriverAppScaffold extends StatelessWidget {
       appBar: AppBar(
         toolbarHeight: 58,
         titleSpacing: Responsive.horizontalPadding(context),
-        title: const Text(
-          'Getin Driver',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Flexible(
+              child: Text(
+                'Getin Driver',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+            ),
+            if (onUatIncomingOrder != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.beige,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'UAT',
+                  style: TextStyle(
+                    color: AppColors.greenDark,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .5,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
+          if (onUatIncomingOrder != null)
+            IconButton(
+              tooltip: 'UAT incoming order',
+              onPressed: onUatIncomingOrder,
+              icon: const Icon(Icons.science_outlined),
+            ),
           IconButton(
             tooltip: 'Getin Support',
             onPressed: onSupport,

@@ -6,6 +6,7 @@ import '../../core/config/app_config.dart';
 import '../../core/data/driver_api_context.dart';
 import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
+import '../../core/offline/driver_offline_safety.dart';
 import '../../core/widgets/app_state_view.dart';
 import '../../core/widgets/driver_app_scaffold.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
@@ -19,10 +20,12 @@ import '../delivery_completion/domain/driver_delivery_completion_models.dart';
 import '../delivery_exceptions/domain/driver_delivery_exception_models.dart';
 import '../earnings/driver_earnings_screen.dart';
 import '../eligibility/data/driver_order_eligibility_repository.dart';
+import '../eligibility/domain/driver_order_eligibility_models.dart';
 import '../eligibility/driver_order_eligibility_screen.dart';
 import '../home/data/driver_home_repository.dart';
 import '../home/domain/driver_home_models.dart';
 import '../home/driver_home_dashboard.dart';
+import '../incoming_orders/driver_incoming_order_offer_dialog.dart';
 import '../location/data/driver_location_repository.dart';
 import '../location/driver_location_service_region_screen.dart';
 import '../navigation/data/driver_navigation_launcher.dart';
@@ -101,6 +104,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   DateTime? _lastSuccessfulSyncAt;
   bool _offlineRetrying = false;
   bool _runtimeRecoveryLoaded = false;
+  bool _incomingOfferVisible = false;
   int _homeReloadToken = 0;
   final DriverNavigationPushGuard _navigationPushGuard =
       DriverNavigationPushGuard();
@@ -126,6 +130,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   late final DriverOrderEligibilityRepository _eligibilityRepository =
       widget.eligibilityRepository ??
           DriverOrderEligibilityRepositoryFactory.create(widget.config);
+  late final DriverOrderAcceptanceRepository _acceptanceRepository =
+      widget.acceptanceRepository ??
+          DriverOrderAcceptanceRepositoryFactory.create(widget.config);
   late final DriverBranchRouteRepository _routeRepository =
       widget.routeRepository ??
           DriverBranchRouteRepositoryFactory.create(widget.config);
@@ -180,8 +187,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     } catch (_) {
       recovered = DriverRuntimeRecoverySnapshot.empty;
     }
-    if (!widget.config.allowsDemo &&
-        widget.config.isApiConfigured) {
+    if (!widget.config.allowsDemo && widget.config.isApiConfigured) {
       try {
         recovered = await DriverRuntimeRecoveryApiRepository(
           DriverApiContext.create(widget.config),
@@ -373,11 +379,10 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     var nextSnapshot = snapshot;
     final incoming = snapshot.activeDelivery;
     final recoveredLocal = _locallyAcceptedDelivery;
-    final preserveRecoveredDemo =
-        widget.config.allowsDemo &&
-            recoveredLocal != null &&
-            incoming != null &&
-            incoming.orderNumber != recoveredLocal.orderNumber;
+    final preserveRecoveredDemo = widget.config.allowsDemo &&
+        recoveredLocal != null &&
+        incoming != null &&
+        incoming.orderNumber != recoveredLocal.orderNumber;
 
     if (!preserveRecoveredDemo &&
         incoming != null &&
@@ -404,6 +409,165 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     });
     _syncBackgroundLocation();
     _persistRuntimeState();
+  }
+
+  Future<void> _openIncomingOrderUatMenu() async {
+    if (!widget.config.uatDemoEnabled || _incomingOfferVisible) {
+      return;
+    }
+
+    final scenario = await showModalBottomSheet<_IncomingOrderUatScenario>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Incoming order UAT',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Local-only scenarios. Nothing here creates or changes a production order.',
+                style: TextStyle(fontSize: 12.5, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              ListTile(
+                leading: const Icon(Icons.campaign_rounded),
+                title: const Text('Broadcast offer'),
+                subtitle:
+                    const Text('Accept successfully and enter pickup flow.'),
+                onTap: () => Navigator.of(context).pop(
+                  _IncomingOrderUatScenario.broadcastAvailable,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.groups_2_outlined),
+                title: const Text('Broadcast race'),
+                subtitle: const Text(
+                  'Another demo driver already owns the order; acceptance must fail safely.',
+                ),
+                onTap: () => Navigator.of(context).pop(
+                  _IncomingOrderUatScenario.alreadyTaken,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.timer_outlined),
+                title: const Text('Offer expiry'),
+                subtitle: const Text(
+                    'Eight-second countdown for visual expiry testing.'),
+                onTap: () => Navigator.of(context).pop(
+                  _IncomingOrderUatScenario.expires,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || scenario == null) {
+      return;
+    }
+    await _showIncomingOrderUatScenario(scenario);
+  }
+
+  DriverOrderCandidate _incomingOrderUatCandidate(
+    _IncomingOrderUatScenario scenario,
+  ) {
+    final alreadyTaken = scenario == _IncomingOrderUatScenario.alreadyTaken;
+    return DriverOrderCandidate(
+      orderNumber: alreadyTaken ? 'GD-3102' : 'GD-UAT-9001',
+      pickupBranch: 'Stanley',
+      region: 'East Alexandria',
+      zone: 'San Stefano',
+      destinationArea: alreadyTaken ? 'Gleem' : 'San Stefano',
+      distanceToBranchKm: 1.8,
+      deliveryDistanceKm: 4.6,
+      estimatedDurationMinutes: 19,
+      bagCount: 2,
+      estimatedDriverEarning: 72,
+      currencyCode: 'EGP',
+      allowedVehicleTypes: const <String>['motorcycle', 'car'],
+      isAvailable: true,
+    );
+  }
+
+  Future<void> _showIncomingOrderUatScenario(
+    _IncomingOrderUatScenario scenario,
+  ) async {
+    if (!mounted || _incomingOfferVisible) {
+      return;
+    }
+
+    final order = _incomingOrderUatCandidate(scenario);
+    setState(() => _incomingOfferVisible = true);
+
+    final decision = await showDriverIncomingOrderOfferDialog(
+      context: context,
+      order: order,
+      offerDuration: scenario == _IncomingOrderUatScenario.expires
+          ? const Duration(seconds: 8)
+          : const Duration(seconds: 25),
+      uatDemo: true,
+    );
+
+    if (!mounted) return;
+    setState(() => _incomingOfferVisible = false);
+
+    if (decision == null) {
+      return;
+    }
+
+    if (decision == DriverIncomingOfferDecision.decline) {
+      _showIncomingOrderMessage(
+        'Demo offer declined. No production data was changed.',
+      );
+      return;
+    }
+
+    if (decision == DriverIncomingOfferDecision.expired) {
+      _showIncomingOrderMessage(
+        'Demo offer expired. It was not assigned to this driver.',
+      );
+      return;
+    }
+
+    if (!driverCriticalActionAllowed(_criticalActionGate)) {
+      _showIncomingOrderMessage(
+        DriverCriticalAction.acceptOrder.offlineMessage,
+      );
+      return;
+    }
+
+    final result = await _acceptanceRepository.accept(
+      order: order,
+      driverId: 'demo-driver-001',
+    );
+    if (!mounted) return;
+
+    if (result.isAccepted) {
+      _handleOrderAccepted(DriverAcceptedOrder(order: order, result: result));
+    }
+    _showIncomingOrderMessage(result.message);
+  }
+
+  void _showIncomingOrderMessage(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(message),
+      ),
+    );
   }
 
   void _handleOrderAccepted(DriverAcceptedOrder acceptedOrder) {
@@ -710,7 +874,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
           availability: _homeSnapshot!.availability,
           activeDelivery: activeDelivery,
           driverApproved: true,
-          acceptanceRepository: widget.acceptanceRepository,
+          acceptanceRepository: _acceptanceRepository,
           onOrderAccepted: _handleOrderAccepted,
           lastCompletedDelivery: _lastCompletedDelivery,
           criticalActionGate: _criticalActionGate,
@@ -735,7 +899,11 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       lastSuccessfulSyncAt: _lastSuccessfulSyncAt,
       retryingConnection: _offlineRetrying,
       onRetryConnection: _retryOfflineConnection,
+      onUatIncomingOrder:
+          widget.config.uatDemoEnabled ? _openIncomingOrderUatMenu : null,
       body: IndexedStack(index: _tab.index, children: pages),
     );
   }
 }
+
+enum _IncomingOrderUatScenario { broadcastAvailable, alreadyTaken, expires }
