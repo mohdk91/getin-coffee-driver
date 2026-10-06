@@ -35,6 +35,7 @@ class DriverDeliveryExceptionCard extends StatelessWidget {
           delivery: delivery,
           config: config,
           repository: repository,
+          existingReceipt: receipt,
         ),
       ),
     );

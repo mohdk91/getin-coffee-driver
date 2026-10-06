@@ -60,13 +60,24 @@ class DriverActiveDeliveryTimelineCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           ...DriverDeliveryStateMachine.corePath.map(
-            (state) => _TimelineStep(
-              state: state,
-              current: current == state,
-              completed: timeline.hasVisited(state) && current != state,
-              currentLabelOverride:
-                  current == state ? currentStateLabelOverride : null,
-            ),
+            (state) {
+              final verificationWasInterrupted = current.isProblemState &&
+                  state == DriverDeliveryState.verificationPending &&
+                  timeline.hasVisited(state) &&
+                  !timeline.hasVisited(DriverDeliveryState.delivered);
+              return _TimelineStep(
+                state: state,
+                current: current == state,
+                completed: timeline.hasVisited(state) &&
+                    current != state &&
+                    !verificationWasInterrupted,
+                labelOverride: verificationWasInterrupted
+                    ? 'Verification not completed'
+                    : null,
+                currentLabelOverride:
+                    current == state ? currentStateLabelOverride : null,
+              );
+            },
           ),
           if (current.isProblemState) ...[
             const SizedBox(height: 8),
@@ -99,12 +110,14 @@ class _TimelineStep extends StatelessWidget {
   final DriverDeliveryState state;
   final bool current;
   final bool completed;
+  final String? labelOverride;
   final String? currentLabelOverride;
 
   const _TimelineStep({
     required this.state,
     required this.current,
     required this.completed,
+    this.labelOverride,
     this.currentLabelOverride,
   });
 
@@ -141,7 +154,7 @@ class _TimelineStep extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              currentLabelOverride ?? state.label,
+              currentLabelOverride ?? labelOverride ?? state.label,
               style: TextStyle(
                 color: current ? AppColors.greenDark : AppColors.muted,
                 fontSize: 11.5,

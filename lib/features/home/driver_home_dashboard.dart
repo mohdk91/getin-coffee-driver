@@ -5,6 +5,7 @@ import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
 import '../../core/widgets/status_pill.dart';
+import '../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../availability/data/driver_availability_repository.dart';
 import '../eligibility/data/driver_order_eligibility_repository.dart';
 import 'data/driver_home_repository.dart';
@@ -493,8 +494,19 @@ class _ActiveDeliveryCard extends StatelessWidget {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: onResume,
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Resume Delivery'),
+                icon: Icon(
+                  delivery.resolvedState == DriverDeliveryState.failedDelivery
+                      ? Icons.report_problem_rounded
+                      : Icons.arrow_forward_rounded,
+                ),
+                label: Text(
+                  delivery.resolvedState == DriverDeliveryState.failedDelivery
+                      ? 'View Failed Delivery'
+                      : delivery.resolvedState ==
+                              DriverDeliveryState.returnedToBranch
+                          ? 'View Return to Branch'
+                          : 'Resume Delivery',
+                ),
               ),
             ),
           ],

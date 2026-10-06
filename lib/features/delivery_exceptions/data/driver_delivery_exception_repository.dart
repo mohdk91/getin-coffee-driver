@@ -284,15 +284,20 @@ class DemoDriverDeliveryExceptionRepository
       required String note}) async {
     await Future<void>.delayed(const Duration(milliseconds: 280));
     final normalizedOrder = orderNumber.trim().toUpperCase();
-    final reportedAt = DateTime.now();
+    final existing = _reports[normalizedOrder];
+    final now = DateTime.now();
+    final trimmedNote = note.trim();
+    final effectiveNote = trimmedNote.isEmpty && (existing?.note.isNotEmpty ?? false)
+        ? existing!.note
+        : trimmedNote;
     final receipt = DriverDeliveryExceptionReceipt(
-        auditId:
-            'DEMO-EXCEPTION-$normalizedOrder-${reportedAt.millisecondsSinceEpoch}',
+        auditId: existing?.auditId ??
+            'DEMO-EXCEPTION-$normalizedOrder-${now.millisecondsSinceEpoch}',
         orderNumber: normalizedOrder,
         driverReference: 'DEMO-DRIVER-001',
         reason: reason,
-        note: note.trim(),
-        reportedAt: reportedAt,
+        note: effectiveNote,
+        reportedAt: existing?.reportedAt ?? now,
         latitude: 31.24580,
         longitude: 29.96680,
         recommendedOrderState: reason.recommendedOrderState,

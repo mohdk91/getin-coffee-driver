@@ -12,12 +12,14 @@ class DriverDeliveryExceptionScreen extends StatefulWidget {
   final DriverActiveDeliverySummary delivery;
   final AppConfig config;
   final DriverDeliveryExceptionRepository? repository;
+  final DriverDeliveryExceptionReceipt? existingReceipt;
 
   const DriverDeliveryExceptionScreen({
     super.key,
     required this.delivery,
     required this.config,
     this.repository,
+    this.existingReceipt,
   });
 
   @override
@@ -37,6 +39,18 @@ class _DriverDeliveryExceptionScreenState
   String? _errorMessage;
   bool _submitting = false;
 
+  bool get _isEditing => widget.existingReceipt != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingReceipt;
+    if (existing != null) {
+      _reason = existing.reason;
+      _noteController.text = existing.note;
+    }
+  }
+
   @override
   void dispose() {
     _noteController.dispose();
@@ -52,11 +66,17 @@ class _DriverDeliveryExceptionScreenState
       _errorMessage = null;
     });
 
+    final existing = widget.existingReceipt;
+    final typedNote = _noteController.text.trim();
+    final note = typedNote.isEmpty && (existing?.note.trim().isNotEmpty ?? false)
+        ? existing!.note
+        : typedNote;
+
     final result = await _repository.reportException(
       apiOrderId: widget.delivery.apiOrderId,
       orderNumber: widget.delivery.orderNumber,
       reason: reason,
-      note: _noteController.text,
+      note: note,
     );
     if (!mounted) return;
 
@@ -90,8 +110,8 @@ class _DriverDeliveryExceptionScreenState
                   isDemo: _repository.source ==
                       DriverDeliveryExceptionDataSource.demo),
               const SizedBox(height: 16),
-              const Text(
-                'What happened?',
+              Text(
+                _isEditing ? 'Update delivery issue' : 'What happened?',
                 style: TextStyle(
                   color: AppColors.greenDark,
                   fontSize: 17,
@@ -145,12 +165,25 @@ class _DriverDeliveryExceptionScreenState
               ],
               const SizedBox(height: 18),
               GetinActionButton(
-                label:
-                    _submitting ? 'Confirming with Getin…' : 'Report Exception',
+                label: _submitting
+                    ? 'Confirming with Getin…'
+                    : (_isEditing ? 'Update Exception' : 'Report Exception'),
                 icon: Icons.report_problem_rounded,
                 onPressed: _reason == null || _submitting ? null : _submit,
               ),
               const SizedBox(height: 10),
+              if (_isEditing) ...[
+                const Text(
+                  'Existing issue details are loaded above. Updating the issue never unlocks verification or delivery completion.',
+                  style: TextStyle(
+                    color: AppColors.warning,
+                    fontSize: 10.5,
+                    height: 1.45,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
               const Text(
                 'Reporting an exception never marks the order Delivered. Production must wait for Getin operations/server acknowledgement before changing the operational order state.',
                 style: TextStyle(
