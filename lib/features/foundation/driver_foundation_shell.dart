@@ -882,8 +882,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         bagCount: matchesPrimaryUatOffer ? uatOffer.bagCount : 0,
         driverEarning:
             matchesPrimaryUatOffer ? uatOffer.estimatedDriverEarning : 0,
-        currencyCode:
-            matchesPrimaryUatOffer ? uatOffer.currencyCode : 'EGP',
+        currencyCode: matchesPrimaryUatOffer ? uatOffer.currencyCode : 'EGP',
       ),
     );
 
@@ -1006,20 +1005,20 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     _pushOnce(
       'active:${delivery.orderNumber}',
       (_) => DriverRouteToBranchScreen(
-              config: widget.config,
-              delivery: delivery,
-              timeline: timeline,
-              repository: _routeRepository,
-              pickupRepository: _pickupRepository,
-              startDeliveryRepository: _startDeliveryRepository,
-              navigationLauncher: widget.navigationLauncher,
-              navigationPreferenceStore: widget.navigationPreferenceStore,
-              onSupport: _openRouteSupport,
-              onStateChanged: _handleDeliveryStateChanged,
-              onPickupReceived: _handlePickupReceived,
-              onDeliveryStarted: _handleDeliveryStarted,
-              criticalActionGate: _criticalActionGate,
-            ),
+        config: widget.config,
+        delivery: delivery,
+        timeline: timeline,
+        repository: _routeRepository,
+        pickupRepository: _pickupRepository,
+        startDeliveryRepository: _startDeliveryRepository,
+        navigationLauncher: widget.navigationLauncher,
+        navigationPreferenceStore: widget.navigationPreferenceStore,
+        onSupport: _openRouteSupport,
+        onStateChanged: _handleDeliveryStateChanged,
+        onPickupReceived: _handlePickupReceived,
+        onDeliveryStarted: _handleDeliveryStarted,
+        criticalActionGate: _criticalActionGate,
+      ),
     );
   }
 
@@ -1160,6 +1159,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         onOpenGpsServiceRegion: _openGpsServiceRegion,
         onOpenOrderEligibility: _openOrderEligibility,
         onOpenRatingsReviews: _openRatingsReviews,
+        onOpenOrders: () => setState(() => _tab = DriverTab.orders),
+        onOpenEarnings: () => setState(() => _tab = DriverTab.earnings),
+        onOpenSupport: () => _openSupport(delivery: activeDelivery),
         reloadToken: _homeReloadToken,
         onLoadFinished: _handleHomeLoadFinished,
       ),

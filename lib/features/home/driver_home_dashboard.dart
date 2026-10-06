@@ -4,6 +4,7 @@ import '../../core/config/app_config.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
+import '../../core/widgets/driver_v2_ui.dart';
 import '../../core/widgets/status_pill.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../availability/data/driver_availability_repository.dart';
@@ -21,6 +22,9 @@ class DriverHomeDashboard extends StatefulWidget {
   final VoidCallback? onOpenGpsServiceRegion;
   final VoidCallback? onOpenOrderEligibility;
   final VoidCallback? onOpenRatingsReviews;
+  final VoidCallback? onOpenOrders;
+  final VoidCallback? onOpenEarnings;
+  final VoidCallback? onOpenSupport;
   final String? completedOrderNumber;
   final int? unreadNotificationsOverride;
   final DriverActiveDeliverySummary? activeDeliveryOverride;
@@ -38,6 +42,9 @@ class DriverHomeDashboard extends StatefulWidget {
     this.onOpenGpsServiceRegion,
     this.onOpenOrderEligibility,
     this.onOpenRatingsReviews,
+    this.onOpenOrders,
+    this.onOpenEarnings,
+    this.onOpenSupport,
     this.completedOrderNumber,
     this.unreadNotificationsOverride,
     this.activeDeliveryOverride,
@@ -233,34 +240,46 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
             padding: EdgeInsets.fromLTRB(padding, 14, padding, 32),
             children: [
               _HeaderSummary(snapshot: snapshot),
-              if (widget.repository.source == DriverHomeDataSource.demo) ...[
-                const SizedBox(height: 14),
-                const _DemoDashboardBanner(),
-              ],
               if (snapshot.activeDelivery != null) ...[
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
                 _ActiveDeliveryCard(
                   delivery: snapshot.activeDelivery!,
                   onResume: widget.onResumeActiveDelivery,
                 ),
               ],
-              const SizedBox(height: 22),
-              const _SectionHeader(
-                title: 'Today',
-                subtitle: 'A quick view of your current delivery activity.',
+              const SizedBox(height: 20),
+              const DriverSectionHeading(
+                title: 'Quick actions',
+                subtitle: 'The four things you need most during a shift.',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              _QuickActions(
+                hasActiveDelivery: snapshot.activeDelivery != null,
+                onOrders: widget.onOpenOrders,
+                onNavigate: snapshot.activeDelivery != null
+                    ? widget.onResumeActiveDelivery
+                    : widget.onOpenGpsServiceRegion,
+                onEarnings: widget.onOpenEarnings,
+                onSupport: widget.onOpenSupport,
+              ),
+              const SizedBox(height: 20),
+              const DriverSectionHeading(
+                title: 'Today',
+                subtitle: 'Your shift at a glance.',
+              ),
+              const SizedBox(height: 10),
               _DashboardMetrics(
                 snapshot: snapshot,
                 onOpenRatingsReviews: widget.onOpenRatingsReviews,
               ),
-              const SizedBox(height: 22),
-              const _SectionHeader(
-                title: 'Availability / shift',
-                subtitle:
-                    'Control whether Getin can consider you for new delivery jobs.',
+              const SizedBox(height: 14),
+              _MotivationCard(snapshot: snapshot),
+              const SizedBox(height: 20),
+              const DriverSectionHeading(
+                title: 'Availability',
+                subtitle: 'Choose whether you can receive new delivery jobs.',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _AvailabilityControl(
                 snapshot: snapshot,
                 changing: _availabilityChanging,
@@ -268,12 +287,12 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
                     DriverAvailabilityDataSource.demo,
                 onChanged: _changeAvailability,
               ),
-              const SizedBox(height: 22),
-              const _SectionHeader(
+              const SizedBox(height: 20),
+              const DriverSectionHeading(
                 title: 'Driver status',
-                subtitle: 'Operational indicators for this dashboard.',
+                subtitle: 'Location, connection and order eligibility.',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _SystemStatusCard(
                 snapshot: snapshot,
                 onOpenGpsServiceRegion: widget.onOpenGpsServiceRegion,
@@ -285,7 +304,7 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.muted,
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -317,61 +336,102 @@ class _HeaderSummary extends StatelessWidget {
       DriverAvailabilityState.offline => StatusTone.neutral,
       DriverAvailabilityState.onBreak => StatusTone.warning,
     };
+    final active = snapshot.activeDelivery;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: active == null ? 196 : 210,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.greenDark,
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Row(
-            children: [
-              StatusPill(
-                label: availabilityLabel,
-                tone: availabilityTone,
-                icon: Icons.circle,
-              ),
-              const Spacer(),
-              const Icon(
-                Icons.delivery_dining_rounded,
-                color: AppColors.beige,
-                size: 30,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            snapshot.activeDelivery == null
-                ? 'Ready for your shift?'
-                : 'Delivery in progress',
-            style: const TextStyle(
-              color: AppColors.white,
-              fontSize: 25,
-              height: 1.08,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -.4,
+          Image.asset(
+            'assets/images/branches/getin_stanley.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            errorBuilder: (_, __, ___) => const ColoredBox(
+              color: AppColors.greenDark,
             ),
           ),
-          const SizedBox(height: 7),
-          Text(
-            snapshot.activeDelivery != null
-                ? 'Complete ${snapshot.activeDelivery!.orderNumber} before receiving another delivery offer.'
-                : switch (snapshot.availability) {
-                    DriverAvailabilityState.online =>
-                      'You are available for eligible delivery jobs.',
-                    DriverAvailabilityState.offline =>
-                      'You are offline and will not receive new delivery jobs.',
-                    DriverAvailabilityState.onBreak =>
-                      'You are on break and temporarily unavailable for new delivery jobs.',
-                  },
-            style: const TextStyle(
-              color: AppColors.beige,
-              fontSize: 12.5,
-              height: 1.45,
-              fontWeight: FontWeight.w500,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [
+                  AppColors.greenDark.withOpacity(.25),
+                  AppColors.greenDark.withOpacity(.88),
+                  AppColors.greenDark,
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    StatusPill(
+                      label: availabilityLabel,
+                      tone: availabilityTone,
+                      icon: Icons.circle,
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.white.withOpacity(.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.delivery_dining_rounded,
+                        color: AppColors.beige,
+                        size: 23,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  active == null
+                      ? 'Ready for your shift?'
+                      : 'Delivery in progress',
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontSize: 27,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -.55,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  active != null
+                      ? '${active.orderNumber} • ${active.destinationArea} • ${active.etaMinutes} min'
+                      : switch (snapshot.availability) {
+                          DriverAvailabilityState.online =>
+                            '${snapshot.availableOrders} eligible orders are ready when you are.',
+                          DriverAvailabilityState.offline =>
+                            'Go online when you are ready to receive delivery jobs.',
+                          DriverAvailabilityState.onBreak =>
+                            'Your break is active. Resume when you are ready.',
+                        },
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.beige,
+                    fontSize: 12.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -380,36 +440,96 @@ class _HeaderSummary extends StatelessWidget {
   }
 }
 
-class _DemoDashboardBanner extends StatelessWidget {
-  const _DemoDashboardBanner();
+class _QuickActions extends StatelessWidget {
+  final bool hasActiveDelivery;
+  final VoidCallback? onOrders;
+  final VoidCallback? onNavigate;
+  final VoidCallback? onEarnings;
+  final VoidCallback? onSupport;
+
+  const _QuickActions({
+    required this.hasActiveDelivery,
+    this.onOrders,
+    this.onNavigate,
+    this.onEarnings,
+    this.onSupport,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.beige.withOpacity(.34),
-        border: Border.all(color: AppColors.beige),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.science_outlined, color: AppColors.greenDark, size: 21),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Local demo dashboard. Orders, earnings, connectivity and notifications are sample data. GPS status can update from the device through Task #37.',
-              style: TextStyle(
-                color: AppColors.greenDark,
-                fontSize: 12,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: DriverQuickActionTile(
+                label: 'View orders',
+                caption: 'New and active jobs',
+                icon: Icons.receipt_long_outlined,
+                onTap: onOrders,
+                emphasized: hasActiveDelivery,
               ),
             ),
-          ),
-        ],
-      ),
+            SizedBox(
+              width: width,
+              child: DriverQuickActionTile(
+                label: 'Navigate',
+                caption: hasActiveDelivery ? 'Resume route' : 'Location & area',
+                icon: Icons.navigation_rounded,
+                onTap: onNavigate,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: DriverQuickActionTile(
+                label: 'Earnings hub',
+                caption: 'Today and payouts',
+                icon: Icons.account_balance_wallet_outlined,
+                onTap: onEarnings,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: DriverQuickActionTile(
+                label: 'Support',
+                caption: 'Get help quickly',
+                icon: Icons.support_agent_rounded,
+                onTap: onSupport,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MotivationCard extends StatelessWidget {
+  final DriverHomeSnapshot snapshot;
+
+  const _MotivationCard({required this.snapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    const dailyTarget = 6;
+    final completed = snapshot.completedToday.clamp(0, dailyTarget).toInt();
+    final remaining = dailyTarget - completed;
+    final progress = completed / dailyTarget;
+    final message = remaining == 0
+        ? 'Daily goal reached. Great shift — keep your quality and rating high.'
+        : '$remaining ${remaining == 1 ? 'delivery' : 'deliveries'} to reach today’s ${dailyTarget}-delivery goal.';
+
+    return DriverProgressCard(
+      eyebrow: 'Today’s goal',
+      title: '$completed / $dailyTarget deliveries',
+      message: message,
+      progress: progress,
+      icon: remaining == 0 ? Icons.emoji_events_rounded : Icons.bolt_rounded,
     );
   }
 }
@@ -575,10 +695,16 @@ class _RouteRow extends StatelessWidget {
 class _DashboardMetrics extends StatelessWidget {
   final DriverHomeSnapshot snapshot;
   final VoidCallback? onOpenRatingsReviews;
+  final VoidCallback? onOpenOrders;
+  final VoidCallback? onOpenEarnings;
+  final VoidCallback? onOpenSupport;
 
   const _DashboardMetrics({
     required this.snapshot,
     this.onOpenRatingsReviews,
+    this.onOpenOrders,
+    this.onOpenEarnings,
+    this.onOpenSupport,
   });
 
   @override
@@ -1068,39 +1194,6 @@ class _AvailabilityOption extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _SectionHeader({required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.greenDark,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: AppColors.muted,
-            fontSize: 12.5,
-            height: 1.4,
-          ),
-        ),
-      ],
     );
   }
 }
