@@ -11,6 +11,7 @@ import '../home/domain/driver_home_models.dart';
 import 'data/driver_gps_gateway.dart';
 import 'data/driver_location_repository.dart';
 import 'domain/driver_location_models.dart';
+import 'domain/driver_device_readiness.dart';
 
 class DriverLocationServiceRegionScreen extends StatefulWidget {
   final AppConfig config;
@@ -34,7 +35,8 @@ class DriverLocationServiceRegionScreen extends StatefulWidget {
 }
 
 class _DriverLocationServiceRegionScreenState
-    extends State<DriverLocationServiceRegionScreen> {
+    extends State<DriverLocationServiceRegionScreen>
+    with WidgetsBindingObserver {
   late final DriverGpsGateway _gpsGateway =
       widget.gpsGateway ?? const DeviceDriverGpsGateway();
 
@@ -47,7 +49,21 @@ class _DriverLocationServiceRegionScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && !_gpsBusy) {
+      _retryGps();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -164,6 +180,10 @@ class _DriverLocationServiceRegionScreenState
                   health: health,
                   busy: _gpsBusy,
                   onResolve: () => _resolveGpsIssue(health),
+                ),
+                const SizedBox(height: 16),
+                _ShiftReadinessCard(
+                  readiness: DriverDeviceReadinessSnapshot.fromGps(health),
                 ),
                 const SizedBox(height: 16),
                 _GpsDiagnosticsCard(health: health),
@@ -350,6 +370,69 @@ class _GpsHandlingCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShiftReadinessCard extends StatelessWidget {
+  final DriverDeviceReadinessSnapshot readiness;
+
+  const _ShiftReadinessCard({required this.readiness});
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = readiness.readyForShift;
+    return Semantics(
+      container: true,
+      label:
+          ready ? 'Shift readiness ready' : 'Shift readiness action required',
+      child: Container(
+        key: const Key('driver-shift-readiness-card'),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ready
+              ? AppColors.success.withOpacity(.08)
+              : AppColors.warning.withOpacity(.08),
+          border: Border.all(
+            color: (ready ? AppColors.success : AppColors.warning)
+                .withOpacity(.28),
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              ready ? Icons.verified_rounded : Icons.warning_amber_rounded,
+              color: ready ? AppColors.success : AppColors.warning,
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    readiness.title,
+                    style: const TextStyle(
+                      color: AppColors.greenDark,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    readiness.message,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
