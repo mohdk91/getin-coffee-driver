@@ -325,6 +325,7 @@ class _DriverDeliveryNavigationScreenState
           config: widget.config,
           delivery: widget.delivery,
           repository: _qrRepository,
+          existingVerification: _deliveryVerification,
           criticalActionGate: widget.criticalActionGate,
         ),
       ),

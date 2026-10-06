@@ -8,6 +8,7 @@ import '../../core/widgets/getin_action_button.dart';
 import '../../core/widgets/status_pill.dart';
 import '../home/domain/driver_home_models.dart';
 import 'data/driver_delivery_qr_repository.dart';
+import 'domain/driver_delivery_pin_models.dart';
 import 'domain/driver_delivery_qr_models.dart';
 import 'driver_verification_issue_card.dart';
 
@@ -15,6 +16,7 @@ class DriverDeliveryQrScreen extends StatefulWidget {
   final AppConfig config;
   final DriverActiveDeliverySummary delivery;
   final DriverDeliveryQrRepository? repository;
+  final DriverDeliveryPinReceipt? existingVerification;
   final DriverCriticalActionGate? criticalActionGate;
 
   const DriverDeliveryQrScreen({
@@ -22,6 +24,7 @@ class DriverDeliveryQrScreen extends StatefulWidget {
     required this.config,
     required this.delivery,
     this.repository,
+    this.existingVerification,
     this.criticalActionGate,
   });
 
@@ -44,7 +47,16 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChallenge();
+    final existing = widget.existingVerification;
+    if (existing != null &&
+        existing.verificationType == 'qr' &&
+        existing.orderNumber.trim().toUpperCase() ==
+            widget.delivery.orderNumber.trim().toUpperCase()) {
+      _outcome = DriverDeliveryQrScreenOutcome.verified(existing);
+      _loading = false;
+    } else {
+      _loadChallenge();
+    }
   }
 
   Future<void> _loadChallenge() async {
@@ -66,6 +78,12 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
       _loading = false;
       _challenge = result.challenge;
       _loadError = result.errorMessage;
+      if (result.verifiedReceipt != null) {
+        _outcome =
+            DriverDeliveryQrScreenOutcome.verified(result.verifiedReceipt!);
+        _verificationError = null;
+        _failureReason = null;
+      }
     });
   }
 
@@ -180,12 +198,21 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
     Navigator.of(context).pop(outcome);
   }
 
+  Future<bool> _handleBackNavigation() async {
+    final outcome = _outcome;
+    if (outcome?.receipt == null) return true;
+    Navigator.of(context).pop(outcome);
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = Responsive.horizontalPadding(context);
     final verified = _outcome?.receipt != null;
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _handleBackNavigation,
+      child: Scaffold(
       backgroundColor: AppColors.cream,
       appBar: AppBar(title: const Text('Scan Customer QR')),
       body: SafeArea(
@@ -209,14 +236,14 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
                 ],
                 if (_loading)
                   const _QrLoadingCard()
+                else if (verified)
+                  _QrVerifiedCard(isDemo: _outcome!.receipt!.isDemo)
                 else if (_challenge == null)
                   _QrUnavailableCard(
                     message: _loadError ??
                         'Customer QR verification is currently unavailable.',
                     onRetry: _loadChallenge,
                   )
-                else if (verified)
-                  _QrVerifiedCard(isDemo: _outcome!.receipt!.isDemo)
                 else if (_failureReason != null)
                   DriverVerificationIssueCard(
                     title: _issueTitle(_failureReason!),
@@ -261,6 +288,7 @@ class _DriverDeliveryQrScreenState extends State<DriverDeliveryQrScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

@@ -25,14 +25,14 @@ void main() {
     expect(result.receipt?.isDemo, isTrue);
   });
 
-  test('Task 20 demo QR is one-time within its verification repository',
+  test('Task 20 same-order QR retry restores the prior verification receipt',
       () async {
     final repository = DemoDriverDeliveryQrRepository();
     final load = await repository.loadChallenge(
         apiOrderId: null, orderNumber: 'GD-2481');
     final challenge = load.challenge!;
 
-    await repository.verifyQr(
+    final first = await repository.verifyQr(
       apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
@@ -41,7 +41,7 @@ void main() {
       qrPayload: DemoDriverDeliveryQrRepository.demoPayload,
     );
 
-    final reused = await repository.verifyQr(
+    final retried = await repository.verifyQr(
       apiOrderId: null,
       challenge: challenge,
       orderNumber: challenge.orderNumber,
@@ -50,8 +50,8 @@ void main() {
       qrPayload: DemoDriverDeliveryQrRepository.demoPayload,
     );
 
-    expect(reused.isSuccess, isFalse);
-    expect(reused.failureReason, DriverDeliveryQrFailureReason.alreadyUsed);
+    expect(retried.isSuccess, isTrue);
+    expect(retried.receipt?.auditId, first.receipt?.auditId);
   });
 
   test('Task 20 rejects QR bound to another assigned driver', () async {

@@ -130,6 +130,8 @@ class DemoDriverDeliveryQrRepository implements DriverDeliveryQrRepository {
   static const String demoPayload = 'GETIN-DEMO-CUSTOMER-QR';
   final Set<String> _usedOrderNumbers = <String>{};
   final Map<String, DateTime> _usedAt = <String, DateTime>{};
+  final Map<String, DriverDeliveryPinReceipt> _verifiedReceipts =
+      <String, DriverDeliveryPinReceipt>{};
   final Map<String, int> _failedAttempts = <String, int>{};
   static const int maxAttempts = 3;
 
@@ -152,6 +154,7 @@ class DemoDriverDeliveryQrRepository implements DriverDeliveryQrRepository {
         expiresAt: DateTime.now().add(const Duration(minutes: 20)),
         usedAt: _usedAt[normalized],
       ),
+      verifiedReceipt: _verifiedReceipts[normalized],
     );
   }
 
@@ -188,6 +191,16 @@ class DemoDriverDeliveryQrRepository implements DriverDeliveryQrRepository {
             'The customer QR is not assigned to this driver. No delivery state changed.',
       );
     }
+
+    final existingReceipt = _verifiedReceipts[normalizedOrder];
+    if (existingReceipt != null && qrPayload.trim() == demoPayload) {
+      return DriverDeliveryQrVerificationResult.success(
+        value: existingReceipt,
+        message:
+            'Delivery Verified. This customer QR was already verified for the same demo order, so the prior verification receipt was restored.',
+      );
+    }
+
     if (_usedOrderNumbers.contains(normalizedOrder) || challenge.isUsed) {
       return const DriverDeliveryQrVerificationResult.failure(
         reason: DriverDeliveryQrFailureReason.alreadyUsed,
@@ -230,22 +243,23 @@ class DemoDriverDeliveryQrRepository implements DriverDeliveryQrRepository {
     }
 
     final verifiedAt = DateTime.now();
+    final receipt = DriverDeliveryPinReceipt(
+      auditId: 'DEMO-QR-$normalizedOrder-${verifiedAt.millisecondsSinceEpoch}',
+      orderNumber: normalizedOrder,
+      customerReference: challenge.customerReference,
+      assignedDriverReference: challenge.assignedDriverReference,
+      verifiedAt: verifiedAt,
+      verificationType: 'qr',
+      serverAcknowledged: false,
+      isDemo: true,
+    );
     _failedAttempts.remove(normalizedOrder);
     _usedOrderNumbers.add(normalizedOrder);
     _usedAt[normalizedOrder] = verifiedAt;
+    _verifiedReceipts[normalizedOrder] = receipt;
 
     return DriverDeliveryQrVerificationResult.success(
-      value: DriverDeliveryPinReceipt(
-        auditId:
-            'DEMO-QR-$normalizedOrder-${verifiedAt.millisecondsSinceEpoch}',
-        orderNumber: normalizedOrder,
-        customerReference: challenge.customerReference,
-        assignedDriverReference: challenge.assignedDriverReference,
-        verifiedAt: verifiedAt,
-        verificationType: 'qr',
-        serverAcknowledged: false,
-        isDemo: true,
-      ),
+      value: receipt,
       message:
           'Delivery Verified. Demo QR verification succeeded locally; Laravel has not acknowledged delivery completion.',
     );

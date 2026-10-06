@@ -35,12 +35,19 @@ class DriverDeliveryQrChallenge {
 
 class DriverDeliveryQrLoadResult {
   final DriverDeliveryQrChallenge? challenge;
+  final DriverDeliveryPinReceipt? verifiedReceipt;
   final String? errorMessage;
 
-  const DriverDeliveryQrLoadResult._({this.challenge, this.errorMessage});
+  const DriverDeliveryQrLoadResult._({
+    this.challenge,
+    this.verifiedReceipt,
+    this.errorMessage,
+  });
 
-  const DriverDeliveryQrLoadResult.success(DriverDeliveryQrChallenge value)
-      : this._(challenge: value);
+  const DriverDeliveryQrLoadResult.success(
+    DriverDeliveryQrChallenge value, {
+    DriverDeliveryPinReceipt? verifiedReceipt,
+  }) : this._(challenge: value, verifiedReceipt: verifiedReceipt);
 
   const DriverDeliveryQrLoadResult.failure(String message)
       : this._(errorMessage: message);
