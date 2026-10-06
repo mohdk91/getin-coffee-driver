@@ -4,7 +4,7 @@ import '../../core/config/app_config.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
-import '../../core/widgets/status_pill.dart';
+import '../../core/widgets/driver_v2_ui.dart';
 import 'data/driver_profile_repository.dart';
 import 'domain/driver_profile_models.dart';
 import '../assignment/data/driver_assignment_repository.dart';
@@ -135,46 +135,22 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(padding, 18, padding, 30),
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Driver Profile',
-                      style: TextStyle(
-                        color: AppColors.greenDark,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Identity, contact details and current Getin assignment.',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12.5,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_repository.source == DriverProfileDataSource.demo)
-                const StatusPill(
-                  label: 'DEMO',
-                  tone: StatusTone.info,
-                  icon: Icons.science_outlined,
-                ),
-            ],
+          const DriverSectionHeading(
+            title: 'Driver Profile',
+            subtitle: 'Your identity, work setup and account controls.',
           ),
-          const SizedBox(height: 16),
-          _ProfileHero(profile: profile),
           const SizedBox(height: 14),
-          _SectionCard(
+          _ProfileHero(profile: profile),
+          const SizedBox(height: 12),
+          _ProfileOverviewStats(profile: profile),
+          const SizedBox(height: 20),
+          const DriverSectionHeading(
             title: 'Contact & identity',
+            subtitle: 'The details linked to your driver account.',
+          ),
+          const SizedBox(height: 10),
+          _SectionCard(
+            title: 'Account details',
             icon: Icons.badge_outlined,
             children: [
               _ProfileDetailRow(
@@ -197,9 +173,14 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
+          const DriverSectionHeading(
+            title: 'Work setup',
+            subtitle: 'Branch access, vehicle and compliance.',
+          ),
+          const SizedBox(height: 10),
           _SectionCard(
-            title: 'Getin assignment',
+            title: 'Current assignment',
             icon: Icons.hub_outlined,
             children: [
               _ProfileDetailRow(
@@ -211,32 +192,36 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
               _AssignedBranches(branches: profile.assignedBranches),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _ProfileNavigationCard(
             key: const Key('profile-assignment-entry'),
             title: 'Branch & region',
-            subtitle:
-                'View city, service regions, allowed branches and radius.',
+            subtitle: 'Service areas, allowed branches and delivery radius.',
             icon: Icons.account_tree_outlined,
             onTap: _openAssignment,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _ProfileNavigationCard(
             key: const Key('profile-vehicle-entry'),
             title: 'Vehicle',
-            subtitle: 'View assigned vehicle, status and document readiness.',
+            subtitle: 'Assigned vehicle and readiness status.',
             icon: Icons.two_wheeler_rounded,
             onTap: _openVehicle,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           _ProfileNavigationCard(
             key: const Key('profile-documents-entry'),
             title: 'Documents',
-            subtitle: 'Review approvals, expiry warnings and replacements.',
+            subtitle: 'Approvals, expiry dates and replacements.',
             icon: Icons.folder_copy_outlined,
             onTap: _openDocuments,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
+          const DriverSectionHeading(
+            title: 'Account & security',
+            subtitle: 'Protect access to your driver account.',
+          ),
+          const SizedBox(height: 10),
           _ProfileNavigationCard(
             key: const Key('profile-security-entry'),
             title: 'Security',
@@ -244,36 +229,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             icon: Icons.security_rounded,
             onTap: _openSecurity,
           ),
-          if (_repository.source == DriverProfileDataSource.demo) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.info.withOpacity(.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.info.withOpacity(.18)),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      color: AppColors.info, size: 19),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Development profile data is local demo data. Production identity and assignments must come from Laravel.',
-                      style: TextStyle(
-                        color: AppColors.info,
-                        fontSize: 12,
-                        height: 1.4,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -288,39 +243,134 @@ class _ProfileHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
-        color: AppColors.green,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.greenDark,
+        borderRadius: BorderRadius.circular(22),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
         children: [
-          _DriverPhoto(profile: profile),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _DriverPhoto(profile: profile),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.fullName,
+                      key: const Key('profile-full-name'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.white,
+                        fontSize: 22,
+                        height: 1.08,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -.35,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    _VerificationPill(status: profile.verificationStatus),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.white.withOpacity(.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
               children: [
+                const Icon(
+                  Icons.badge_outlined,
+                  color: AppColors.beige,
+                  size: 17,
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  profile.fullName,
-                  key: const Key('profile-full-name'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  'ID • ${profile.driverId}',
                   style: const TextStyle(
                     color: AppColors.white,
-                    fontSize: 21,
-                    height: 1.1,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
-                _VerificationPill(status: profile.verificationStatus),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    'Region • ${profile.assignedRegion}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      color: AppColors.beige,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileOverviewStats extends StatelessWidget {
+  final DriverProfileSnapshot profile;
+
+  const _ProfileOverviewStats({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 8.0;
+        final width = (constraints.maxWidth - (gap * 2)) / 3;
+        return Row(
+          children: [
+            SizedBox(
+              width: width,
+              child: DriverStatTile(
+                label: 'Status',
+                value: profile.verificationStatus ==
+                        DriverProfileVerificationStatus.approved
+                    ? 'Verified'
+                    : profile.verificationStatus.label,
+                icon: Icons.verified_outlined,
+              ),
+            ),
+            const SizedBox(width: gap),
+            SizedBox(
+              width: width,
+              child: DriverStatTile(
+                label: 'Branches',
+                value: '${profile.assignedBranches.length}',
+                icon: Icons.storefront_outlined,
+              ),
+            ),
+            const SizedBox(width: gap),
+            SizedBox(
+              width: width,
+              child: DriverStatTile(
+                label: 'Region',
+                value: profile.assignedRegion,
+                icon: Icons.map_outlined,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -392,8 +442,8 @@ class _DriverPhoto extends StatelessWidget {
       image: true,
       child: Container(
         key: const Key('driver-profile-photo'),
-        width: 76,
-        height: 76,
+        width: 88,
+        height: 88,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppColors.cream,
@@ -439,7 +489,7 @@ class _PhotoFallback extends StatelessWidget {
         child: Icon(
           Icons.person_rounded,
           color: AppColors.green,
-          size: 44,
+          size: 48,
         ),
       ),
     );

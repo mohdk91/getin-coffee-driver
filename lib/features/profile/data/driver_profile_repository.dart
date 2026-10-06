@@ -64,9 +64,18 @@ class ApiDriverProfileRepository implements DriverProfileRepository {
       verificationStatus: _verificationStatus(approval, note),
       assignedRegion: regions.isEmpty ? 'Not assigned' : regions.join(', '),
       assignedBranches: List<String>.unmodifiable(branches),
+      photoUrl: _photoUrl(data),
       updatedAt: DateTime.tryParse(data['updated_at']?.toString() ?? '') ??
           DateTime.now(),
     );
+  }
+
+  String? _photoUrl(Map<String, dynamic> data) {
+    for (final key in const ['photo_url', 'avatar_url', 'profile_photo_url']) {
+      final value = data[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   List<String> _names(Object? raw) {
