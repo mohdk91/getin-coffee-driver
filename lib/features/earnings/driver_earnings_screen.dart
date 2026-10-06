@@ -91,6 +91,11 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
           ),
           const SizedBox(height: 14),
           _TotalCard(snapshot: snapshot),
+          if (_repository.source == DriverEarningsDataSource.demo &&
+              _period == DriverEarningsPeriod.today) ...[
+            const SizedBox(height: 12),
+            _EarningsGoalCard(snapshot: snapshot),
+          ],
           const SizedBox(height: 12),
           _CommissionPolicyEntry(config: widget.config),
           const SizedBox(height: 12),
@@ -313,6 +318,30 @@ class _HeroMetric extends StatelessWidget {
   }
 }
 
+class _EarningsGoalCard extends StatelessWidget {
+  final DriverEarningsSnapshot snapshot;
+
+  const _EarningsGoalCard({required this.snapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    const deliveryGoal = 6;
+    final completed = snapshot.deliveryCount.clamp(0, deliveryGoal);
+    final remaining = (deliveryGoal - completed).clamp(0, deliveryGoal);
+    final progress = completed / deliveryGoal;
+
+    return DriverProgressCard(
+      eyebrow: 'Today’s delivery goal',
+      title: '$completed / $deliveryGoal deliveries',
+      message: remaining == 0
+          ? 'Goal reached. Keep your service quality and rating high.'
+          : '$remaining ${remaining == 1 ? 'delivery' : 'deliveries'} to reach today’s goal.',
+      progress: progress,
+      icon: remaining == 0 ? Icons.emoji_events_rounded : Icons.bolt_rounded,
+    );
+  }
+}
+
 class _EarningsTrendCard extends StatelessWidget {
   final DriverEarningsSnapshot snapshot;
 
@@ -414,7 +443,7 @@ class _EarningsTrendCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              item.deliveredAt.day.toString(),
+                              _trendLabel(item.deliveredAt, snapshot.period),
                               style: const TextStyle(
                                 color: AppColors.muted,
                                 fontSize: 8.5,
@@ -584,7 +613,7 @@ class _CommissionPolicyEntry extends StatelessWidget {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      'View the active backend-driven commission policy and effective rules.',
+                      'See how delivery pay, bonuses and approved adjustments are calculated.',
                       style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 11.5,
@@ -822,7 +851,7 @@ class _BackendRulesNote extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Getin calculates earning rules on the backend. The app displays the amounts returned for base pay, distance, peak bonus, tips and adjustments; it does not permanently hardcode commission rules.',
+              'Your earnings may include base pay, distance, peak bonuses, tips and approved adjustments.',
               style: TextStyle(
                 color: AppColors.greenDark,
                 fontSize: 11.5,
@@ -841,6 +870,22 @@ String _signedMoney(String currency, double value) {
   if (value > 0) return '+$currency ${value.toStringAsFixed(2)}';
   if (value < 0) return '-$currency ${value.abs().toStringAsFixed(2)}';
   return '$currency 0.00';
+}
+
+String _trendLabel(DateTime value, DriverEarningsPeriod period) {
+  final local = value.toLocal();
+  if (period == DriverEarningsPeriod.today) {
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  if (period == DriverEarningsPeriod.week) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekdays[local.weekday - 1];
+  }
+
+  return '${local.day}/${local.month}';
 }
 
 String _formatDateTime(DateTime value) {

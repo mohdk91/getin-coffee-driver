@@ -68,6 +68,13 @@ void main() {
     expect(find.text('+20 111 222 3333'), findsOneWidget);
     expect(find.text('test.driver@getin.local'), findsOneWidget);
     expect(find.text('DRV-TEST-032'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('East Alexandria'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('East Alexandria'), findsOneWidget);
 
     await tester.scrollUntilVisible(

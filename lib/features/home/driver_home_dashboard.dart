@@ -239,15 +239,15 @@ class _DriverHomeDashboardState extends State<DriverHomeDashboard> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(padding, 14, padding, 32),
             children: [
-              _HeaderSummary(snapshot: snapshot),
-              if (snapshot.activeDelivery != null) ...[
-                const SizedBox(height: 14),
+              if (snapshot.activeDelivery == null)
+                _HeaderSummary(snapshot: snapshot)
+              else
                 _ActiveDeliveryCard(
                   delivery: snapshot.activeDelivery!,
+                  availability: snapshot.availability,
                   onResume: widget.onResumeActiveDelivery,
                 ),
-              ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               const DriverSectionHeading(
                 title: 'Quick actions',
                 subtitle: 'The four things you need most during a shift.',
@@ -532,23 +532,36 @@ class _MotivationCard extends StatelessWidget {
 
 class _ActiveDeliveryCard extends StatelessWidget {
   final DriverActiveDeliverySummary delivery;
+  final DriverAvailabilityState availability;
   final VoidCallback? onResume;
 
-  const _ActiveDeliveryCard({required this.delivery, this.onResume});
+  const _ActiveDeliveryCard({
+    required this.delivery,
+    required this.availability,
+    this.onResume,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 420;
+    final actionLabel =
+        delivery.resolvedState == DriverDeliveryState.failedDelivery
+            ? 'View Failed Delivery'
+            : delivery.resolvedState == DriverDeliveryState.returnedToBranch
+                ? 'View Return to Branch'
+                : 'Resume Delivery';
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 14 : 16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.gold.withOpacity(.55)),
+        border: Border.all(color: AppColors.gold.withOpacity(.48)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x100D211C),
-            blurRadius: 28,
-            offset: Offset(0, 12),
+            color: Color(0x0D0D211C),
+            blurRadius: 22,
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -556,66 +569,153 @@ class _ActiveDeliveryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const StatusPill(
-                label: 'ACTIVE DELIVERY',
-                tone: StatusTone.info,
-                icon: Icons.route_rounded,
+              DriverBranchThumbnail(
+                branchName: delivery.pickupBranch,
+                width: compact ? 76 : 86,
+                height: compact ? 76 : 86,
+                radius: 18,
               ),
-              const Spacer(),
-              Text(
-                '${delivery.etaMinutes} min',
-                style: const TextStyle(
-                  color: AppColors.greenDark,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Delivery in progress',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.greenDark,
+                              fontSize: compact ? 16 : 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${delivery.etaMinutes} min',
+                          style: const TextStyle(
+                            color: AppColors.greenDark,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      delivery.orderNumber,
+                      style: const TextStyle(
+                        color: AppColors.greenDark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      delivery.status.replaceAll(' • Demo', ''),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 6,
+                      children: [
+                        StatusPill(
+                          label: availability.label,
+                          tone: availability == DriverAvailabilityState.online
+                              ? StatusTone.success
+                              : availability == DriverAvailabilityState.onBreak
+                                  ? StatusTone.warning
+                                  : StatusTone.neutral,
+                          icon: availability == DriverAvailabilityState.online
+                              ? Icons.circle
+                              : Icons.pause_circle_outline_rounded,
+                        ),
+                        const StatusPill(
+                          label: 'ACTIVE DELIVERY',
+                          tone: StatusTone.info,
+                          icon: Icons.route_rounded,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            delivery.orderNumber,
-            style: const TextStyle(
-              color: AppColors.greenDark,
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -.3,
+          const SizedBox(height: 13),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.cream,
+              borderRadius: BorderRadius.circular(14),
             ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            delivery.status,
-            style: const TextStyle(
-              color: AppColors.gold,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 15),
-          _RouteRow(
-            icon: Icons.storefront_rounded,
-            label: 'Pickup',
-            value: delivery.pickupBranch,
-          ),
-          const SizedBox(height: 9),
-          _RouteRow(
-            icon: Icons.location_on_outlined,
-            label: 'Destination',
-            value: delivery.destinationArea,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Complete ${delivery.orderNumber} before receiving another delivery offer.',
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 10.5,
-              height: 1.35,
-              fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.green,
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    delivery.pickupBranch,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.greenDark,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.gold,
+                    size: 16,
+                  ),
+                ),
+                const Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.green,
+                  size: 17,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    delivery.destinationArea,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      color: AppColors.greenDark,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           if (onResume != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -625,75 +725,12 @@ class _ActiveDeliveryCard extends StatelessWidget {
                       ? Icons.report_problem_rounded
                       : Icons.arrow_forward_rounded,
                 ),
-                label: Text(
-                  delivery.resolvedState == DriverDeliveryState.failedDelivery
-                      ? 'View Failed Delivery'
-                      : delivery.resolvedState ==
-                              DriverDeliveryState.returnedToBranch
-                          ? 'View Return to Branch'
-                          : 'Resume Delivery',
-                ),
+                label: Text(actionLabel),
               ),
             ),
           ],
         ],
       ),
-    );
-  }
-}
-
-class _RouteRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _RouteRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.cream,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: AppColors.green, size: 18),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.greenDark,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -295,25 +295,15 @@ class _ProfileHero extends StatelessWidget {
                   size: 17,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'ID • ${profile.driverId}',
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                Flexible(
+                Expanded(
                   child: Text(
-                    'Region • ${profile.assignedRegion}',
+                    'Driver ID • ${profile.driverId}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
                     style: const TextStyle(
-                      color: AppColors.beige,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -364,7 +354,7 @@ class _ProfileOverviewStats extends StatelessWidget {
               width: width,
               child: DriverStatTile(
                 label: 'Region',
-                value: profile.assignedRegion,
+                value: 'Assigned',
                 icon: Icons.map_outlined,
               ),
             ),
@@ -461,7 +451,7 @@ class _DriverPhoto extends StatelessWidget {
       return Image.asset(
         assetPath,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _PhotoFallback(),
+        errorBuilder: (_, __, ___) => _PhotoFallback(name: profile.fullName),
       );
     }
 
@@ -470,26 +460,44 @@ class _DriverPhoto extends StatelessWidget {
       return Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _PhotoFallback(),
+        errorBuilder: (_, __, ___) => _PhotoFallback(name: profile.fullName),
       );
     }
 
-    return const _PhotoFallback();
+    return _PhotoFallback(name: profile.fullName);
   }
 }
 
 class _PhotoFallback extends StatelessWidget {
-  const _PhotoFallback();
+  final String name;
+
+  const _PhotoFallback({required this.name});
+
+  String get _initials {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) return 'G';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+        .toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
+    return ColoredBox(
       color: AppColors.cream,
       child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: AppColors.green,
-          size: 48,
+        child: Text(
+          _initials,
+          style: const TextStyle(
+            color: AppColors.greenDark,
+            fontSize: 30,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -.5,
+          ),
         ),
       ),
     );

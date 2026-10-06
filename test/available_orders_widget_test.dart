@@ -148,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No new orders right now'), findsOneWidget);
-    expect(find.textContaining('Finish GD-2481'), findsOneWidget);
+    expect(find.textContaining('Complete GD-2481'), findsOneWidget);
     expect(find.text('GD-3101'), findsNothing);
     expect(find.text('Accept Delivery'), findsNothing);
   });

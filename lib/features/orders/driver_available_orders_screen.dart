@@ -245,8 +245,10 @@ class _DriverAvailableOrdersScreenState
                     ),
                   ),
                 ),
-              const SizedBox(height: 6),
-              const _PrivacyNotice(),
+              if (eligibleOrders.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                const _PrivacyNotice(),
+              ],
             ],
           ),
         ),
@@ -705,8 +707,8 @@ class _EmptyAvailableOrders extends StatelessWidget {
         ? 'No available delivery matches your current search or filters.'
         : !contextData.hasOrderCapacity
             ? activeOrderNumber == null
-                ? 'V1 allows one active delivery. Finish the current delivery before Getin exposes another job.'
-                : 'V1 allows one active delivery. Finish $activeOrderNumber before Getin exposes another job.'
+                ? 'Complete your active delivery to receive another order.'
+                : 'Complete $activeOrderNumber to receive another delivery offer.'
             : contextData.availability != DriverAvailabilityState.online
                 ? 'Go Online before Getin can expose eligible delivery jobs.'
                 : 'No delivery currently passes every eligibility rule. Pull down to check again.';
@@ -782,7 +784,7 @@ class _PrivacyNotice extends StatelessWidget {
           SizedBox(width: 9),
           Expanded(
             child: Text(
-              'Before acceptance, Getin shows only the operational information needed to evaluate the job. Customer name, phone and exact private address remain hidden.',
+              'Customer contact details and the exact private address unlock only after you accept the delivery.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 11,

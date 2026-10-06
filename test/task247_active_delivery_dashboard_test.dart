@@ -46,11 +46,10 @@ void main() {
 
     expect(find.text('Delivery in progress'), findsOneWidget);
     expect(find.text('GD-UAT-ACTIVE'), findsOneWidget);
+    expect(find.text('ACTIVE DELIVERY'), findsOneWidget);
     expect(
-      find.text(
-        'Complete GD-UAT-ACTIVE before receiving another delivery offer.',
-      ),
-      findsOneWidget,
+      find.textContaining('before receiving another delivery offer'),
+      findsNothing,
     );
     expect(emittedSnapshot?.availableOrders, 0);
     expect(tester.takeException(), isNull);
