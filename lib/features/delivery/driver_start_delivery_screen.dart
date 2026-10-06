@@ -331,7 +331,7 @@ class _StartActionCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'This is an explicit state change from picked up to out for delivery. It must eventually be acknowledged by Laravel before the Customer App changes state.',
+            'This changes the order from picked up to out for delivery. Continue only when you are ready to leave the branch.',
             style: TextStyle(
               color: AppColors.muted,
               fontSize: 11.5,

@@ -53,7 +53,9 @@ class AppConfig {
     if (!isApiConfigured) return !requiresApi;
     final uri = apiUri;
     if (uri == null || !uri.hasScheme || uri.host.trim().isEmpty) return false;
-    if (!requiresApi) return uri.scheme == 'http' || uri.scheme == 'https';
+    if (environment == AppEnvironment.development && !kReleaseMode) {
+      return uri.scheme == 'http' || uri.scheme == 'https';
+    }
     return uri.scheme == 'https';
   }
 

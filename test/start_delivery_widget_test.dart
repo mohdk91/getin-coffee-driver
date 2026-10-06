@@ -62,8 +62,13 @@ void main() {
     );
 
     expect(find.text('Start Delivery'), findsWidgets);
-    expect(find.textContaining('Laravel and the Customer App are not updated'),
-        findsOneWidget);
+    expect(
+      find.textContaining(
+          'Continue only when you are ready to leave the branch'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Laravel'), findsNothing);
+    expect(find.textContaining('Customer App'), findsNothing);
 
     final button = find.widgetWithText(FilledButton, 'Start Delivery');
     await tester.ensureVisible(button);
@@ -71,7 +76,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Delivery started'), findsOneWidget);
-    expect(find.textContaining('not acknowledged by Laravel'), findsOneWidget);
+    expect(find.textContaining('Local test session'), findsOneWidget);
+    expect(find.textContaining('Laravel'), findsNothing);
     expect(callbackReceipt, isNotNull);
     expect(callbackReceipt!.serverAcknowledged, isFalse);
   });
