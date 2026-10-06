@@ -69,22 +69,24 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
-    // The parent ListView keeps its previous scroll offset. The timeline is
-    // above the QR entry card and can be lazily unbuilt after returning from
-    // the child route, so scroll back up before asserting its synchronized
-    // label.
-    final verificationComplete = find.text('Verification complete');
+    // Phase B places the verification card before secondary destination and
+    // timeline detail. First confirm the parent received the QR receipt.
+    final qrVerified = find.text('QR Verified');
     await _dragUntilBuilt(
       tester,
-      verificationComplete,
+      qrVerified,
       moveStep: const Offset(0, 220),
     );
-    expect(find.text('Verification pending'), findsNothing);
 
-    // Scroll back down to the verification card and completion action.
-    final qrVerified = find.text('QR Verified');
-    await _dragUntilBuilt(tester, qrVerified);
+    // The timeline is collapsed by default in the new cockpit. Its compact
+    // status pill remains authoritative and should reflect the synchronized
+    // verification state without requiring expansion.
+    final verificationComplete = find.text('VERIFICATION COMPLETE');
+    await _dragUntilBuilt(tester, verificationComplete);
+    expect(find.textContaining('Verification pending'), findsNothing);
 
+    // Completion remains a separate server-confirmed action below the
+    // timeline and must be unlocked after successful verification.
     final complete = find.widgetWithText(FilledButton, 'Complete Delivery');
     await _dragUntilBuilt(tester, complete);
     final completeButton = tester.widget<FilledButton>(complete);

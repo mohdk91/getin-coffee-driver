@@ -6,10 +6,14 @@ import 'package:getin_driver/features/destination/data/driver_delivery_destinati
 import 'package:getin_driver/features/home/domain/driver_home_models.dart';
 import 'package:getin_driver/features/navigation/driver_delivery_navigation_screen.dart';
 
-Future<void> _dragUntilBuilt(WidgetTester tester, Finder target) async {
+Future<void> _dragUntilBuilt(
+  WidgetTester tester,
+  Finder target, {
+  Offset moveStep = const Offset(0, -240),
+}) async {
   final scrollable = find.byType(Scrollable).first;
   for (var attempt = 0; attempt < 18 && target.evaluate().isEmpty; attempt++) {
-    await tester.drag(scrollable, const Offset(0, -240));
+    await tester.drag(scrollable, moveStep);
     await tester.pumpAndSettle();
   }
   expect(target, findsOneWidget);
@@ -89,7 +93,16 @@ void main() {
     await tester.tap(back);
     await tester.pumpAndSettle();
 
-    expect(find.text('QR Verified'), findsOneWidget);
+    // Phase B keeps verification at the top of the next-action-first
+    // cockpit, but the parent ListView can restore at a different lazy-build
+    // offset after the QR child route closes. Scroll until the verified state
+    // is actually built before asserting it.
+    final qrVerified = find.text('QR Verified');
+    await _dragUntilBuilt(
+      tester,
+      qrVerified,
+      moveStep: const Offset(0, 240),
+    );
     expect(find.text('Scan Customer QR'), findsNothing);
   });
 }
