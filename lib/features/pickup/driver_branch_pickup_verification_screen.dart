@@ -153,13 +153,9 @@ class _DriverBranchPickupVerificationScreenState
                 32,
               ),
               children: [
-                _PickupProgress(receipt: _receipt, verification: _verification),
-                const SizedBox(height: 14),
-                if (_isDemo) ...[
-                  const _DemoPickupNotice(),
-                  const SizedBox(height: 14),
-                ],
                 _OrderBranchCard(route: widget.route),
+                const SizedBox(height: 14),
+                _PickupProgress(receipt: _receipt, verification: _verification),
                 const SizedBox(height: 14),
                 if (_receipt == null) ...[
                   _VerificationCard(
@@ -179,6 +175,10 @@ class _DriverBranchPickupVerificationScreenState
                         ? null
                         : _confirmReceived,
                   ),
+                  if (_isDemo) ...[
+                    const SizedBox(height: 14),
+                    const _DemoPickupNotice(),
+                  ],
                 ] else ...[
                   _PickupReceiptCard(receipt: _receipt!),
                   const SizedBox(height: 14),
@@ -450,6 +450,16 @@ class _VerificationCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
+            'NEXT STEP',
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 7),
+          const Text(
             'Verify the branch handoff',
             style: TextStyle(
               color: AppColors.greenDark,
@@ -560,9 +570,11 @@ class _ReceivePickupCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: ready ? AppColors.white : const Color(0xFFF0EEE8),
+        color: ready ? AppColors.greenDark : const Color(0xFFF0EEE8),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: ready ? AppColors.greenDark : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,7 +584,7 @@ class _ReceivePickupCard extends StatelessWidget {
             children: [
               Icon(
                 ready ? Icons.inventory_2_outlined : Icons.lock_outline_rounded,
-                color: ready ? AppColors.green : AppColors.muted,
+                color: ready ? AppColors.beige : AppColors.muted,
                 size: 21,
               ),
               const SizedBox(width: 10),
@@ -580,10 +592,10 @@ class _ReceivePickupCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Take custody of the order',
                       style: TextStyle(
-                        color: AppColors.greenDark,
+                        color: ready ? AppColors.white : AppColors.greenDark,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
                       ),
@@ -593,8 +605,9 @@ class _ReceivePickupCard extends StatelessWidget {
                       ready
                           ? 'Confirm only after branch staff hands you the complete order.'
                           : 'Received from Branch stays locked until order verification succeeds.',
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color:
+                            ready ? const Color(0xFFD8E0DD) : AppColors.muted,
                         fontSize: 11,
                         height: 1.4,
                         fontWeight: FontWeight.w600,
