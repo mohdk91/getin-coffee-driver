@@ -116,8 +116,15 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
 
   List<DriverOrderHistoryItem> _filtered(DriverOrderHistoryGroup group) {
     final query = _searchController.text.trim().toLowerCase();
+    final snapshotItems = _snapshot?.items ?? const <DriverOrderHistoryItem>[];
+    final completedOrderAlreadyLoaded = widget.lastCompletedDelivery != null &&
+        snapshotItems.any(
+          (item) =>
+              item.orderNumber.toUpperCase() ==
+              widget.lastCompletedDelivery!.orderNumber.toUpperCase(),
+        );
     final base = <DriverOrderHistoryItem>[
-      ...?_snapshot?.items,
+      ...snapshotItems,
       if (widget.activeDelivery != null)
         DriverOrderHistoryItem(
           orderNumber: widget.activeDelivery!.orderNumber,
@@ -129,7 +136,8 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
           driverEarning: 0,
           currencyCode: 'EGP',
         ),
-      if (widget.lastCompletedDelivery != null)
+      if (widget.lastCompletedDelivery != null &&
+          !completedOrderAlreadyLoaded)
         DriverOrderHistoryItem(
           orderNumber: widget.lastCompletedDelivery!.orderNumber,
           pickupBranch: widget.lastCompletedDelivery!.pickupBranch,

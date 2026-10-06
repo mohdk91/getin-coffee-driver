@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/uat/driver_uat_completed_delivery_store.dart';
 import '../../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../domain/driver_order_history_models.dart';
 
@@ -16,6 +17,9 @@ class DriverOrderHistoryRepositoryFactory {
     AppConfig config, {
     DriverApiContext? context,
   }) {
+    if (config.uatDemoEnabled) {
+      return const UatDriverOrderHistoryRepository();
+    }
     if (config.isApiConfigured) {
       return ApiDriverOrderHistoryRepository(
         context ?? DriverApiContext.create(config),
@@ -85,6 +89,52 @@ class ApiDriverOrderHistoryRepository implements DriverOrderHistoryRepository {
   }
 }
 
+
+class UatDriverOrderHistoryRepository implements DriverOrderHistoryRepository {
+  final DriverUatCompletedDeliveryStore completedStore;
+
+  const UatDriverOrderHistoryRepository({
+    this.completedStore =
+        const SharedPreferencesDriverUatCompletedDeliveryStore(),
+  });
+
+  @override
+  DriverOrderHistoryDataSource get source => DriverOrderHistoryDataSource.demo;
+
+  @override
+  Future<DriverOrderHistoryLoadResult> load() async {
+    final now = DateTime.now();
+    final persisted = await completedStore.load();
+    final items = <DriverOrderHistoryItem>[
+      ...persisted.map(
+        (record) => DriverOrderHistoryItem(
+          orderNumber: record.orderNumber,
+          pickupBranch: record.pickupBranch,
+          destinationArea: record.destinationArea,
+          state: DriverDeliveryState.delivered,
+          occurredAt: record.completedAt,
+          bagCount: record.bagCount,
+          driverEarning: record.driverEarning,
+          currencyCode: record.currencyCode,
+          note: 'Completed during a local UAT delivery run.',
+        ),
+      ),
+      ..._demoHistorySeed(now),
+    ];
+
+    final deduped = <String, DriverOrderHistoryItem>{};
+    for (final item in items) {
+      deduped[item.orderNumber.toUpperCase()] = item;
+    }
+    final values = deduped.values.toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+    return DriverOrderHistoryLoadResult.success(
+      DriverOrderHistorySnapshot(items: values, updatedAt: now),
+    );
+  }
+}
+
 class DemoDriverOrderHistoryRepository implements DriverOrderHistoryRepository {
   const DemoDriverOrderHistoryRepository();
 
@@ -98,65 +148,69 @@ class DemoDriverOrderHistoryRepository implements DriverOrderHistoryRepository {
     return DriverOrderHistoryLoadResult.success(
       DriverOrderHistorySnapshot(
         updatedAt: now,
-        items: [
-          DriverOrderHistoryItem(
-            orderNumber: 'GD-2476',
-            pickupBranch: 'Stanley',
-            destinationArea: 'San Stefano',
-            state: DriverDeliveryState.delivered,
-            occurredAt: now.subtract(const Duration(hours: 3)),
-            bagCount: 2,
-            driverEarning: 72,
-            currencyCode: 'EGP',
-          ),
-          DriverOrderHistoryItem(
-            orderNumber: 'GD-2468',
-            pickupBranch: 'Gleem',
-            destinationArea: 'Roushdy',
-            state: DriverDeliveryState.delivered,
-            occurredAt: now.subtract(const Duration(days: 2, hours: 1)),
-            bagCount: 1,
-            driverEarning: 61,
-            currencyCode: 'EGP',
-          ),
-          DriverOrderHistoryItem(
-            orderNumber: 'GD-2451',
-            pickupBranch: 'Stanley',
-            destinationArea: 'Sporting',
-            state: DriverDeliveryState.cancelled,
-            occurredAt: now.subtract(const Duration(days: 5)),
-            bagCount: 2,
-            driverEarning: 0,
-            currencyCode: 'EGP',
-            note: 'Cancelled before pickup.',
-          ),
-          DriverOrderHistoryItem(
-            orderNumber: 'GD-2419',
-            pickupBranch: 'Gleem',
-            destinationArea: 'Sidi Gaber',
-            state: DriverDeliveryState.returnedToBranch,
-            occurredAt: now.subtract(const Duration(days: 12)),
-            bagCount: 1,
-            driverEarning: 24,
-            currencyCode: 'EGP',
-            note: 'Returned to branch after delivery exception.',
-          ),
-          DriverOrderHistoryItem(
-            orderNumber: 'GD-2397',
-            pickupBranch: 'Stanley',
-            destinationArea: 'Smouha',
-            state: DriverDeliveryState.failedDelivery,
-            occurredAt: now.subtract(const Duration(days: 22)),
-            bagCount: 3,
-            driverEarning: 18,
-            currencyCode: 'EGP',
-            note: 'Delivery exception recorded.',
-          ),
-        ],
+        items: _demoHistorySeed(now),
       ),
     );
   }
 }
+
+
+List<DriverOrderHistoryItem> _demoHistorySeed(DateTime now) =>
+    <DriverOrderHistoryItem>[
+      DriverOrderHistoryItem(
+        orderNumber: 'GD-2476',
+        pickupBranch: 'Stanley',
+        destinationArea: 'San Stefano',
+        state: DriverDeliveryState.delivered,
+        occurredAt: now.subtract(const Duration(hours: 3)),
+        bagCount: 2,
+        driverEarning: 72,
+        currencyCode: 'EGP',
+      ),
+      DriverOrderHistoryItem(
+        orderNumber: 'GD-2468',
+        pickupBranch: 'Gleem',
+        destinationArea: 'Roushdy',
+        state: DriverDeliveryState.delivered,
+        occurredAt: now.subtract(const Duration(days: 2, hours: 1)),
+        bagCount: 1,
+        driverEarning: 61,
+        currencyCode: 'EGP',
+      ),
+      DriverOrderHistoryItem(
+        orderNumber: 'GD-2451',
+        pickupBranch: 'Stanley',
+        destinationArea: 'Sporting',
+        state: DriverDeliveryState.cancelled,
+        occurredAt: now.subtract(const Duration(days: 5)),
+        bagCount: 2,
+        driverEarning: 0,
+        currencyCode: 'EGP',
+        note: 'Cancelled before pickup.',
+      ),
+      DriverOrderHistoryItem(
+        orderNumber: 'GD-2419',
+        pickupBranch: 'Gleem',
+        destinationArea: 'Sidi Gaber',
+        state: DriverDeliveryState.returnedToBranch,
+        occurredAt: now.subtract(const Duration(days: 12)),
+        bagCount: 1,
+        driverEarning: 24,
+        currencyCode: 'EGP',
+        note: 'Returned to branch after delivery exception.',
+      ),
+      DriverOrderHistoryItem(
+        orderNumber: 'GD-2397',
+        pickupBranch: 'Stanley',
+        destinationArea: 'Smouha',
+        state: DriverDeliveryState.failedDelivery,
+        occurredAt: now.subtract(const Duration(days: 22)),
+        bagCount: 3,
+        driverEarning: 18,
+        currencyCode: 'EGP',
+        note: 'Delivery exception recorded.',
+      ),
+    ];
 
 class UnavailableDriverOrderHistoryRepository
     implements DriverOrderHistoryRepository {

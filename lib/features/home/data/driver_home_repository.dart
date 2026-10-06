@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/uat/driver_uat_completed_delivery_store.dart';
 import '../domain/driver_home_models.dart';
 
 enum DriverHomeDataSource { demo, api }
@@ -102,7 +103,12 @@ class ApiDriverHomeRepository implements DriverHomeRepository {
 }
 
 class UatDriverHomeRepository implements DriverHomeRepository {
-  const UatDriverHomeRepository();
+  final DriverUatCompletedDeliveryStore completedStore;
+
+  const UatDriverHomeRepository({
+    this.completedStore =
+        const SharedPreferencesDriverUatCompletedDeliveryStore(),
+  });
 
   @override
   DriverHomeDataSource get source => DriverHomeDataSource.demo;
@@ -110,23 +116,39 @@ class UatDriverHomeRepository implements DriverHomeRepository {
   @override
   Future<DriverHomeLoadResult> loadDashboard() async {
     await Future<void>.delayed(const Duration(milliseconds: 160));
+    final now = DateTime.now();
+    final records = await completedStore.load();
+    final today = records.where((record) => _sameLocalDay(record.completedAt, now));
+    final completedToday = today.length;
+    final earningsToday = today.fold<double>(
+      0,
+      (total, record) => total + record.driverEarning,
+    );
 
     return DriverHomeLoadResult.success(
       DriverHomeSnapshot(
         availability: DriverAvailabilityState.online,
         activeDelivery: null,
         availableOrders: 0,
-        completedToday: 0,
-        earningsToday: 0,
+        completedToday: completedToday,
+        earningsToday: earningsToday,
         currencyCode: 'EGP',
         rating: 4.9,
         ratingCount: 126,
         unreadNotifications: 0,
         gpsState: DriverGpsState.ready,
         internetConnected: true,
-        updatedAt: DateTime.now(),
+        updatedAt: now,
       ),
     );
+  }
+
+  bool _sameLocalDay(DateTime value, DateTime now) {
+    final local = value.toLocal();
+    final localNow = now.toLocal();
+    return local.year == localNow.year &&
+        local.month == localNow.month &&
+        local.day == localNow.day;
   }
 }
 

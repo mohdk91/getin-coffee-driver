@@ -7,6 +7,7 @@ import '../../core/data/driver_api_context.dart';
 import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
 import '../../core/offline/driver_offline_safety.dart';
+import '../../core/uat/driver_uat_completed_delivery_store.dart';
 import '../../core/widgets/app_state_view.dart';
 import '../../core/widgets/driver_app_scaffold.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
@@ -109,6 +110,8 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   int _homeReloadToken = 0;
   final DriverNavigationPushGuard _navigationPushGuard =
       DriverNavigationPushGuard();
+  final DriverUatCompletedDeliveryStore _uatCompletedDeliveryStore =
+      const SharedPreferencesDriverUatCompletedDeliveryStore();
 
   late final DriverRuntimeRecoveryStore _recoveryStore =
       widget.recoveryStore ?? SharedPreferencesDriverRuntimeRecoveryStore();
@@ -490,6 +493,16 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                       _IncomingOrderUatScenario.expires,
                     ),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.restart_alt_rounded),
+                    title: const Text('Reset completed demo history'),
+                    subtitle: const Text(
+                      'Clear only locally persisted UAT completions and dashboard stats.',
+                    ),
+                    onTap: () => Navigator.of(context).pop(
+                      _IncomingOrderUatScenario.resetCompletedHistory,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -502,6 +515,11 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       return;
     }
 
+    if (scenario == _IncomingOrderUatScenario.resetCompletedHistory) {
+      await _resetIncomingOrderUatCompletedHistory();
+      return;
+    }
+
     if (scenario == _IncomingOrderUatScenario.activeDeliveryBlocked) {
       await _prepareIncomingOrderUatActiveDriver();
     } else {
@@ -509,6 +527,21 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     }
     if (!mounted) return;
     await _showIncomingOrderUatScenario(scenario);
+  }
+
+  Future<void> _resetIncomingOrderUatCompletedHistory() async {
+    if (!widget.config.uatDemoEnabled || !mounted) return;
+
+    await _uatCompletedDeliveryStore.clear();
+    if (!mounted) return;
+
+    setState(() {
+      _lastCompletedDelivery = null;
+      _homeReloadToken += 1;
+    });
+    _showIncomingOrderMessage(
+      'Local UAT completed history and dashboard stats were reset.',
+    );
   }
 
   Future<void> _prepareIncomingOrderUatIdleDriver() async {
@@ -808,6 +841,36 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     );
   }
 
+  Future<void> _persistUatCompletedDelivery(
+    DriverDeliveryCompletionReceipt receipt,
+    DriverActiveDeliverySummary delivery,
+  ) async {
+    if (!widget.config.uatDemoEnabled || !receipt.isDemo) return;
+
+    final uatOffer = _incomingOrderUatCandidate(
+      _IncomingOrderUatScenario.idleBroadcast,
+    );
+    final matchesPrimaryUatOffer =
+        uatOffer.orderNumber.toUpperCase() == receipt.orderNumber.toUpperCase();
+
+    await _uatCompletedDeliveryStore.upsert(
+      DriverUatCompletedDeliveryRecord(
+        orderNumber: receipt.orderNumber,
+        pickupBranch: delivery.pickupBranch,
+        destinationArea: delivery.destinationArea,
+        completedAt: receipt.completedAt,
+        bagCount: matchesPrimaryUatOffer ? uatOffer.bagCount : 0,
+        driverEarning:
+            matchesPrimaryUatOffer ? uatOffer.estimatedDriverEarning : 0,
+        currencyCode:
+            matchesPrimaryUatOffer ? uatOffer.currencyCode : 'EGP',
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() => _homeReloadToken += 1);
+  }
+
   void _handleDeliveryCompleted(DriverDeliveryCompletionReceipt receipt) {
     if (!mounted) {
       return;
@@ -824,6 +887,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     }
 
     final completedDelivery = _currentActiveDelivery;
+    if (completedDelivery != null) {
+      unawaited(_persistUatCompletedDelivery(receipt, completedDelivery));
+    }
     setState(() {
       _completedOrderNumber = receipt.orderNumber;
       _lastCompletedDelivery = completedDelivery;
@@ -1081,6 +1147,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         const AppLoadingState(label: 'Loading orders…')
       else
         DriverOrderHistoryScreen(
+          key: ValueKey<String>('orders-history-$_homeReloadToken'),
           config: widget.config,
           eligibilityRepository: _eligibilityRepository,
           availability: _homeSnapshot!.availability,
@@ -1123,4 +1190,5 @@ enum _IncomingOrderUatScenario {
   activeDeliveryBlocked,
   alreadyTaken,
   expires,
+  resetCompletedHistory,
 }
