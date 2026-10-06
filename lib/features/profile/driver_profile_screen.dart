@@ -19,11 +19,13 @@ import '../vehicle/driver_vehicle_screen.dart';
 class DriverProfileScreen extends StatefulWidget {
   final AppConfig config;
   final DriverProfileRepository? repository;
+  final VoidCallback? onOpenTestLab;
 
   const DriverProfileScreen({
     super.key,
     required this.config,
     this.repository,
+    this.onOpenTestLab,
   });
 
   @override
@@ -229,6 +231,21 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             icon: Icons.security_rounded,
             onTap: _openSecurity,
           ),
+          if (widget.config.uatDemoEnabled && widget.onOpenTestLab != null) ...[
+            const SizedBox(height: 18),
+            const DriverSectionHeading(
+              title: 'Advanced',
+              subtitle: 'Tools available only in this non-production build.',
+            ),
+            const SizedBox(height: 10),
+            _ProfileNavigationCard(
+              key: const Key('profile-test-lab-entry'),
+              title: 'Test Lab',
+              subtitle: 'Delivery scenarios, resets and verification tools.',
+              icon: Icons.science_outlined,
+              onTap: widget.onOpenTestLab!,
+            ),
+          ],
         ],
       ),
     );

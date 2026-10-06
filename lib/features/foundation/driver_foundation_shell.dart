@@ -433,7 +433,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
         activeOrderCount: _hasRunningActiveDelivery ? 1 : 0,
       );
 
-  Future<void> _openIncomingOrderUatMenu() async {
+  Future<void> _openDriverTestLab() async {
     if (!widget.config.uatDemoEnabled || _incomingOfferVisible) {
       return;
     }
@@ -454,7 +454,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Incoming order UAT',
+                    'Driver Test Lab',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
@@ -462,7 +462,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Local-only scenarios. Nothing here creates or changes a production order.',
+                    'Scenario tools for this non-production build. Nothing here changes a production order.',
                     style: TextStyle(fontSize: 12.5, height: 1.4),
                   ),
                   const SizedBox(height: 14),
@@ -470,7 +470,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                     leading: const Icon(Icons.person_outline_rounded),
                     title: const Text('Idle driver • broadcast offer'),
                     subtitle: const Text(
-                      'Reset local UAT delivery state, then receive and accept a new offer.',
+                      'Reset local delivery test state, then receive and accept a new offer.',
                     ),
                     onTap: () => Navigator.of(context).pop(
                       _IncomingOrderUatScenario.idleBroadcast,
@@ -490,7 +490,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                     leading: const Icon(Icons.groups_2_outlined),
                     title: const Text('Broadcast race'),
                     subtitle: const Text(
-                      'Another demo driver already owns the order; acceptance must fail safely.',
+                      'Another test driver already owns the order; acceptance must fail safely.',
                     ),
                     onTap: () => Navigator.of(context).pop(
                       _IncomingOrderUatScenario.alreadyTaken,
@@ -508,9 +508,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
                   ),
                   ListTile(
                     leading: const Icon(Icons.restart_alt_rounded),
-                    title: const Text('Reset completed demo history'),
+                    title: const Text('Reset completed test history'),
                     subtitle: const Text(
-                      'Clear only locally persisted UAT completions and dashboard stats.',
+                      'Clear only locally persisted test completions and dashboard stats.',
                     ),
                     onTap: () => Navigator.of(context).pop(
                       _IncomingOrderUatScenario.resetCompletedHistory,
@@ -1184,6 +1184,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       DriverProfileScreen(
         config: widget.config,
         repository: widget.profileRepository,
+        onOpenTestLab: widget.config.uatDemoEnabled ? _openDriverTestLab : null,
       ),
     ];
 
@@ -1200,8 +1201,6 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       lastSuccessfulSyncAt: _lastSuccessfulSyncAt,
       retryingConnection: _offlineRetrying,
       onRetryConnection: _retryOfflineConnection,
-      onUatIncomingOrder:
-          widget.config.uatDemoEnabled ? _openIncomingOrderUatMenu : null,
       body: IndexedStack(index: _tab.index, children: pages),
     );
   }

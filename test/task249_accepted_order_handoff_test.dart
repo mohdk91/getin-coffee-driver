@@ -11,6 +11,30 @@ const _uatConfig = AppConfig(
   uatDemoRequested: true,
 );
 
+const _profileListKey = PageStorageKey<String>('driver-profile-list');
+const _testLabEntryKey = Key('profile-test-lab-entry');
+
+Future<void> _openTestLab(WidgetTester tester) async {
+  await tester.tap(find.byIcon(Icons.person_rounded));
+  await tester.pumpAndSettle();
+
+  final profileList = find.byKey(_profileListKey);
+  expect(profileList, findsOneWidget);
+  for (var attempt = 0;
+      attempt < 8 && find.byKey(_testLabEntryKey).evaluate().isEmpty;
+      attempt += 1) {
+    await tester.drag(profileList, const Offset(0, -260));
+    await tester.pumpAndSettle();
+  }
+
+  final entry = find.byKey(_testLabEntryKey);
+  expect(entry, findsOneWidget);
+  await tester.ensureVisible(entry);
+  await tester.pumpAndSettle();
+  await tester.tap(entry);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets(
     'Task 249 accepted broadcast hands off directly to branch route',
@@ -27,8 +51,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('UAT incoming order'));
-      await tester.pumpAndSettle();
+      await _openTestLab(tester);
       await tester.tap(find.text('Idle driver • broadcast offer'));
       await tester.pumpAndSettle();
 
