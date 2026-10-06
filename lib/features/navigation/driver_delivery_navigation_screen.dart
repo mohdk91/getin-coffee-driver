@@ -126,6 +126,14 @@ class _DriverDeliveryNavigationScreenState
     _loadExistingException();
   }
 
+  String _orderKey(String value) => value.trim().toUpperCase();
+
+  bool _exceptionBelongsToActiveOrder(
+    DriverDeliveryExceptionReceipt receipt,
+  ) =>
+      _orderKey(receipt.orderNumber) ==
+      _orderKey(widget.delivery.orderNumber);
+
   bool _advanceTimeline(
     DriverDeliveryState target, {
     required String source,
@@ -169,6 +177,7 @@ class _DriverDeliveryNavigationScreenState
       orderNumber: widget.delivery.orderNumber,
     );
     if (!mounted || receipt == null) return;
+    if (!_exceptionBelongsToActiveOrder(receipt)) return;
     setState(() => _exceptionReceipt = receipt);
     final target =
         receipt.reason == DriverDeliveryExceptionReason.returnToBranch
@@ -356,6 +365,16 @@ class _DriverDeliveryNavigationScreenState
 
   void _handleDeliveryException(DriverDeliveryExceptionReceipt receipt) {
     if (!mounted) return;
+    if (!_exceptionBelongsToActiveOrder(receipt)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This issue belongs to a different order and was not applied.',
+          ),
+        ),
+      );
+      return;
+    }
     final target =
         receipt.reason == DriverDeliveryExceptionReason.returnToBranch
             ? DriverDeliveryState.returnedToBranch

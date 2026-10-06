@@ -36,18 +36,28 @@ class _DriverDeliveryExceptionScreenState
 
   DriverDeliveryExceptionReason? _reason;
   DriverDeliveryExceptionReceipt? _receipt;
+  DriverDeliveryExceptionReceipt? _existingReceipt;
   String? _errorMessage;
   bool _submitting = false;
 
-  bool get _isEditing => widget.existingReceipt != null;
+  bool get _isEditing => _existingReceipt != null;
+
+  String _orderKey(String value) => value.trim().toUpperCase();
+
+  bool _matchesDelivery(DriverDeliveryExceptionReceipt receipt) =>
+      _orderKey(receipt.orderNumber) == _orderKey(widget.delivery.orderNumber);
 
   @override
   void initState() {
     super.initState();
     final existing = widget.existingReceipt;
-    if (existing != null) {
+    if (existing != null && _matchesDelivery(existing)) {
+      _existingReceipt = existing;
       _reason = existing.reason;
       _noteController.text = existing.note;
+    } else if (existing != null) {
+      _errorMessage =
+          'The saved issue belongs to a different order and was not loaded.';
     }
   }
 
@@ -66,7 +76,7 @@ class _DriverDeliveryExceptionScreenState
       _errorMessage = null;
     });
 
-    final existing = widget.existingReceipt;
+    final existing = _existingReceipt;
     final typedNote = _noteController.text.trim();
     final note = typedNote.isEmpty && (existing?.note.trim().isNotEmpty ?? false)
         ? existing!.note

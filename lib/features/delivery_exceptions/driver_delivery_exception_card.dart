@@ -27,6 +27,16 @@ class DriverDeliveryExceptionCard extends StatelessWidget {
     this.deliveryCompleted = false,
   });
 
+  String _orderKey(String value) => value.trim().toUpperCase();
+
+  DriverDeliveryExceptionReceipt? get _boundReceipt {
+    final current = receipt;
+    if (current == null) return null;
+    return _orderKey(current.orderNumber) == _orderKey(delivery.orderNumber)
+        ? current
+        : null;
+  }
+
   Future<void> _open(BuildContext context) async {
     final result =
         await Navigator.of(context).push<DriverDeliveryExceptionReceipt>(
@@ -35,7 +45,7 @@ class DriverDeliveryExceptionCard extends StatelessWidget {
           delivery: delivery,
           config: config,
           repository: repository,
-          existingReceipt: receipt,
+          existingReceipt: _boundReceipt,
         ),
       ),
     );
@@ -44,7 +54,7 @@ class DriverDeliveryExceptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final current = receipt;
+    final current = _boundReceipt;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

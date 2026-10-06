@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/uat/driver_uat_delivery_exception_store.dart';
 import '../domain/driver_delivery_exception_models.dart';
 
 abstract interface class DriverDeliveryExceptionRepository {
@@ -268,14 +269,49 @@ class DemoDriverDeliveryExceptionRepository
     implements DriverDeliveryExceptionRepository {
   const DemoDriverDeliveryExceptionRepository();
   static final Map<String, DriverDeliveryExceptionReceipt> _reports = {};
-  static void clearDemoState() => _reports.clear();
+  static SharedPreferencesDriverUatDeliveryExceptionStore _store =
+      SharedPreferencesDriverUatDeliveryExceptionStore();
+
+  static void clearDemoState() {
+    _reports.clear();
+    _store = SharedPreferencesDriverUatDeliveryExceptionStore();
+  }
+
+  static Future<void> clearPersistedDemoState() async {
+    _reports.clear();
+    await _store.clearAll();
+    _store = SharedPreferencesDriverUatDeliveryExceptionStore();
+  }
+
+  static String _key(String orderNumber) =>
+      orderNumber.trim().toUpperCase();
+
+  static bool _belongsToOrder(
+    DriverDeliveryExceptionReceipt receipt,
+    String orderNumber,
+  ) =>
+      _key(receipt.orderNumber) == _key(orderNumber);
   @override
   DriverDeliveryExceptionDataSource get source =>
       DriverDeliveryExceptionDataSource.demo;
   @override
-  Future<DriverDeliveryExceptionReceipt?> loadActiveException(
-          {required int? apiOrderId, required String orderNumber}) async =>
-      _reports[orderNumber.trim().toUpperCase()];
+  Future<DriverDeliveryExceptionReceipt?> loadActiveException({
+    required int? apiOrderId,
+    required String orderNumber,
+  }) async {
+    final key = _key(orderNumber);
+    final inMemory = _reports[key];
+    if (inMemory != null && _belongsToOrder(inMemory, key)) {
+      return inMemory;
+    }
+
+    final persisted = await _store.load(key);
+    if (persisted == null || !_belongsToOrder(persisted, key)) {
+      return null;
+    }
+    _reports[key] = persisted;
+    return persisted;
+  }
   @override
   Future<DriverDeliveryExceptionResult> reportException(
       {required int? apiOrderId,
@@ -283,8 +319,11 @@ class DemoDriverDeliveryExceptionRepository
       required DriverDeliveryExceptionReason reason,
       required String note}) async {
     await Future<void>.delayed(const Duration(milliseconds: 280));
-    final normalizedOrder = orderNumber.trim().toUpperCase();
-    final existing = _reports[normalizedOrder];
+    final normalizedOrder = _key(orderNumber);
+    final existing = await loadActiveException(
+      apiOrderId: apiOrderId,
+      orderNumber: normalizedOrder,
+    );
     final now = DateTime.now();
     final trimmedNote = note.trim();
     final effectiveNote = trimmedNote.isEmpty && (existing?.note.isNotEmpty ?? false)
@@ -304,6 +343,7 @@ class DemoDriverDeliveryExceptionRepository
         serverAcknowledged: false,
         isDemo: true);
     _reports[normalizedOrder] = receipt;
+    await _store.upsert(receipt);
     return DriverDeliveryExceptionResult.success(
         value: receipt,
         message:

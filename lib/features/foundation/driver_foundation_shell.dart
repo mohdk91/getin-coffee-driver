@@ -19,6 +19,7 @@ import '../delivery/data/driver_start_delivery_repository.dart';
 import '../delivery/domain/driver_start_delivery_models.dart';
 import '../delivery_completion/data/driver_delivery_completion_repository.dart';
 import '../delivery_completion/domain/driver_delivery_completion_models.dart';
+import '../delivery_exceptions/data/driver_delivery_exception_repository.dart';
 import '../delivery_exceptions/domain/driver_delivery_exception_models.dart';
 import '../earnings/driver_earnings_screen.dart';
 import '../eligibility/data/driver_order_eligibility_repository.dart';
@@ -187,6 +188,14 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   DriverActiveDeliverySummary? get _currentActiveDelivery =>
       _locallyAcceptedDelivery ?? _homeSnapshot?.activeDelivery;
 
+  bool _retainsOperationalHold(DriverDeliveryState state) =>
+      state == DriverDeliveryState.failedDelivery ||
+      state == DriverDeliveryState.returnedToBranch;
+
+  bool _shouldPersistActiveDelivery(DriverActiveDeliverySummary delivery) =>
+      !delivery.resolvedState.isTerminal ||
+      _retainsOperationalHold(delivery.resolvedState);
+
   Future<void> _restoreRuntimeState() async {
     DriverRuntimeRecoverySnapshot recovered;
     try {
@@ -210,7 +219,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
     final recoveredDelivery = recovered.activeDelivery;
     final canRestoreDelivery = recoveredDelivery != null &&
-        !recoveredDelivery.resolvedState.isTerminal &&
+        _shouldPersistActiveDelivery(recoveredDelivery) &&
         recoveredDelivery.orderNumber != recovered.completedOrderNumber;
 
     setState(() {
@@ -238,8 +247,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     unawaited(
       _recoveryStore.save(
         DriverRuntimeRecoverySnapshot(
-          activeDelivery:
-              active?.resolvedState.isTerminal == true ? null : active,
+          activeDelivery: active != null && _shouldPersistActiveDelivery(active)
+              ? active
+              : null,
           completedOrderNumber: _completedOrderNumber,
           lastSuccessfulSyncAt: _lastSuccessfulSyncAt,
         ),
@@ -554,6 +564,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     // A PIN lockout must survive reload/reopen/restart for the current order,
     // but a brand-new local UAT scenario needs clean verification state.
     await _uatPinLockoutStore.clearAll();
+    await DemoDriverDeliveryExceptionRepository.clearPersistedDemoState();
     if (!mounted) return;
 
     setState(() {
