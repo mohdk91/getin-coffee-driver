@@ -12,6 +12,7 @@ import '../eligibility/data/driver_order_eligibility_repository.dart';
 import '../eligibility/domain/driver_order_eligibility_models.dart';
 import '../home/domain/driver_home_models.dart';
 import 'data/driver_order_acceptance_repository.dart';
+import 'data/driver_order_offer_response_repository.dart';
 import 'domain/driver_order_acceptance_models.dart';
 
 class DriverAvailableOrdersScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class DriverAvailableOrdersScreen extends StatefulWidget {
   final bool driverApproved;
   final String? activeOrderNumber;
   final DriverOrderAcceptanceRepository? acceptanceRepository;
+  final DriverOrderOfferResponseRepository? offerResponseRepository;
   final ValueChanged<DriverAcceptedOrder>? onOrderAccepted;
   final String searchQuery;
   final String? branchFilter;
@@ -37,6 +39,7 @@ class DriverAvailableOrdersScreen extends StatefulWidget {
     this.driverApproved = true,
     this.activeOrderNumber,
     this.acceptanceRepository,
+    this.offerResponseRepository,
     this.onOrderAccepted,
     this.searchQuery = '',
     this.branchFilter,
@@ -55,7 +58,9 @@ class _DriverAvailableOrdersScreenState
   String? _errorMessage;
   bool _loading = true;
   late final DriverOrderAcceptanceRepository _acceptanceRepository;
+  late final DriverOrderOfferResponseRepository _offerResponseRepository;
   final Set<String> _acceptingOrders = <String>{};
+  final Set<int> _decliningOfferIds = <int>{};
   final Map<String, DriverOrderAcceptanceResult> _acceptanceResults =
       <String, DriverOrderAcceptanceResult>{};
   DriverAcceptedOrder? _acceptedOrder;
@@ -65,6 +70,8 @@ class _DriverAvailableOrdersScreenState
     super.initState();
     _acceptanceRepository = widget.acceptanceRepository ??
         DriverOrderAcceptanceRepositoryFactory.create(widget.config);
+    _offerResponseRepository = widget.offerResponseRepository ??
+        DriverOrderOfferResponseRepositoryFactory.create(widget.config);
     _load();
   }
 
@@ -147,6 +154,26 @@ class _DriverAvailableOrdersScreenState
         content: Text(result.message),
       ),
     );
+  }
+
+  Future<void> _declineOffer(DriverOrderCandidate order) async {
+    final offerId = order.apiOfferId;
+    if (offerId == null || _decliningOfferIds.contains(offerId)) return;
+    setState(() => _decliningOfferIds.add(offerId));
+    final result = await _offerResponseRepository.reject(offerId);
+    if (!mounted) return;
+    setState(() => _decliningOfferIds.remove(offerId));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(result.message),
+      ),
+    );
+    if (result.success) {
+      await _load();
+    }
   }
 
   void _showDetails(DriverOrderCandidate order) {
@@ -240,7 +267,13 @@ class _DriverAvailableOrdersScreenState
                                   decision.order.orderNumber),
                       acceptanceResult:
                           _acceptanceResults[decision.order.orderNumber],
+                      declining: decision.order.apiOfferId != null &&
+                          _decliningOfferIds
+                              .contains(decision.order.apiOfferId),
                       onAccept: () => _acceptOrder(decision.order),
+                      onDecline: decision.order.apiOfferId == null
+                          ? null
+                          : () => _declineOffer(decision.order),
                       onDetails: () => _showDetails(decision.order),
                     ),
                   ),
@@ -290,16 +323,20 @@ class _AvailableOrderCard extends StatelessWidget {
   final DriverOrderCandidate order;
   final bool accepting;
   final bool acceptanceLocked;
+  final bool declining;
   final DriverOrderAcceptanceResult? acceptanceResult;
   final VoidCallback onAccept;
+  final VoidCallback? onDecline;
   final VoidCallback onDetails;
 
   const _AvailableOrderCard({
     required this.order,
     required this.accepting,
     required this.acceptanceLocked,
+    required this.declining,
     required this.acceptanceResult,
     required this.onAccept,
+    required this.onDecline,
     required this.onDetails,
   });
 
@@ -447,6 +484,23 @@ class _AvailableOrderCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (onDecline != null) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: declining || accepting ? null : onDecline,
+                  icon: declining
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.close_rounded),
+                  label: Text(declining ? 'Declining…' : 'Decline Offer'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -487,7 +541,7 @@ class _AcceptedOrderBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'The local demo lock is now owned by this driver. Use the Active Delivery bar to open the route to the pickup branch.',
+                  'Getin confirmed this delivery for you. Open Active Delivery to continue to the pickup branch.',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 11.5,
