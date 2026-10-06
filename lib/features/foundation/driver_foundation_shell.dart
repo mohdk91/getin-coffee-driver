@@ -50,6 +50,7 @@ import '../ratings/domain/driver_rating_models.dart';
 import '../ratings/driver_ratings_reviews_screen.dart';
 import '../recovery/data/driver_runtime_recovery_store.dart';
 import '../recovery/data/driver_runtime_recovery_api_repository.dart';
+import '../recovery/data/driver_runtime_recovery_coordinator.dart';
 import '../support/data/driver_support_chat_repository.dart';
 import '../support/driver_support_chat_screen.dart';
 
@@ -108,6 +109,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   DateTime? _lastSuccessfulSyncAt;
   bool _offlineRetrying = false;
   bool _runtimeRecoveryLoaded = false;
+  bool _runtimeRecoveryReadOnly = false;
   bool _incomingOfferVisible = false;
   int _homeReloadToken = 0;
   final DriverNavigationPushGuard _navigationPushGuard =
@@ -197,22 +199,17 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       _retainsOperationalHold(delivery.resolvedState);
 
   Future<void> _restoreRuntimeState() async {
-    DriverRuntimeRecoverySnapshot recovered;
-    try {
-      recovered = await _recoveryStore.load();
-    } catch (_) {
-      recovered = DriverRuntimeRecoverySnapshot.empty;
-    }
-    if (!widget.config.allowsDemo && widget.config.isApiConfigured) {
-      try {
-        recovered = await DriverRuntimeRecoveryApiRepository(
-          DriverApiContext.create(widget.config),
-        ).load();
-      } catch (_) {
-        // Offline startup may use the last local snapshot. Critical mutations
-        // remain protected by the app's online action gate.
-      }
-    }
+    final coordinator = DriverRuntimeRecoveryCoordinator(
+      config: widget.config,
+      store: _recoveryStore,
+      remoteLoader: !widget.config.allowsDemo && widget.config.isApiConfigured
+          ? () => DriverRuntimeRecoveryApiRepository(
+                DriverApiContext.create(widget.config),
+              ).load()
+          : null,
+    );
+    final resolution = await coordinator.resolve();
+    final recovered = resolution.snapshot;
     if (!mounted) {
       return;
     }
@@ -224,6 +221,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
     setState(() {
       _runtimeRecoveryLoaded = true;
+      _runtimeRecoveryReadOnly = resolution.readOnlyFallback;
       _completedOrderNumber = recovered.completedOrderNumber;
       _lastSuccessfulSyncAt = recovered.lastSuccessfulSyncAt;
       if (canRestoreDelivery) {
@@ -296,7 +294,8 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     );
   }
 
-  bool get _isOffline => _homeSnapshot?.internetConnected == false;
+  bool get _isOffline =>
+      _runtimeRecoveryReadOnly || _homeSnapshot?.internetConnected == false;
 
   bool _criticalActionGate() => !_isOffline;
 
@@ -422,6 +421,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       _homeSnapshot = nextSnapshot;
       if (nextSnapshot.internetConnected) {
         _lastSuccessfulSyncAt = nextSnapshot.updatedAt;
+        _runtimeRecoveryReadOnly = false;
       }
     });
     _syncBackgroundLocation();
