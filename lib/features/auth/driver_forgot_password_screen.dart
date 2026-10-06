@@ -56,7 +56,7 @@ class _DriverForgotPasswordScreenState
       _failure = result.failure;
       if (result.isSuccess) {
         _successMessage = widget.repository.source == DriverAuthSource.demo
-            ? 'Demo reset request created for ${result.data!.destinationLabel}. No email or SMS was sent.'
+            ? 'Test reset request created for ${result.data!.destinationLabel}. No email or SMS was sent.'
             : 'Reset instructions requested.';
       }
     });

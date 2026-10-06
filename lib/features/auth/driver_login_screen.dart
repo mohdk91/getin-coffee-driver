@@ -198,7 +198,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Task #3 local demo',
+                'Test access',
                 style: TextStyle(
                   color: AppColors.greenDark,
                   fontSize: 21,
@@ -216,7 +216,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               ),
               SizedBox(height: 18),
               Text(
-                'Email demo credentials',
+                'Test email credentials',
                 style: TextStyle(
                   color: AppColors.greenDark,
                   fontWeight: FontWeight.w900,
@@ -232,7 +232,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               _CredentialRow('server@getin.local', 'Temporary failure'),
               SizedBox(height: 10),
               Text(
-                'Password for demo accounts: Driver123!',
+                'Test password: Driver123!',
                 style: TextStyle(
                   color: AppColors.greenDark,
                   fontSize: 13,
@@ -241,7 +241,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
               ),
               SizedBox(height: 14),
               Text(
-                'No real credential, OTP, SMS, email, or token is sent or stored by this demo.',
+                'These credentials are available only in this non-production build.',
                 style: TextStyle(
                   color: AppColors.muted,
                   fontSize: 12,

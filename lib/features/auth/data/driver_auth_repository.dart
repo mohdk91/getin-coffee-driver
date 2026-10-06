@@ -443,8 +443,7 @@ class UnavailableDriverAuthRepository implements DriverAuthRepository {
       DriverAuthFailure(
         type: DriverAuthFailureType.unavailable,
         message:
-            'Driver authentication is not connected to the Laravel API yet. '
-            'No login action was completed.',
+            'Sign-in service is unavailable right now. No login action was completed.',
       ),
     );
   }

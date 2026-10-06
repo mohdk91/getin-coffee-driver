@@ -72,7 +72,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Demo Driver'), findsOneWidget);
+    expect(find.text('Getin Driver'), findsOneWidget);
   });
 
   testWidgets('onboarding contains five topics and finishes at Driver Login', (

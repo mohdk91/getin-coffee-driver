@@ -96,7 +96,7 @@ class _DriverCommissionsScreenState extends State<DriverCommissionsScreen> {
             ),
             const SizedBox(height: 5),
             const Text(
-              'See the rules currently supplied to the Driver App. Getin operations and Laravel remain the source of truth.',
+              'See the active delivery-pay rules currently supplied to the Driver App.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 12.5,
@@ -107,7 +107,7 @@ class _DriverCommissionsScreenState extends State<DriverCommissionsScreen> {
             if (_repository.source == DriverCommissionDataSource.demo) ...[
               const SizedBox(height: 10),
               const Text(
-                'DEMO COMMISSION POLICY • Not a production payout promise',
+                'TEST DATA • Local commission preview',
                 style: TextStyle(
                   color: AppColors.warning,
                   fontSize: 10.5,
@@ -284,7 +284,7 @@ class _BackendAuthorityCard extends StatelessWidget {
               SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  'Backend is the source of truth',
+                  'Getin pay rules are authoritative',
                   style: TextStyle(
                     color: AppColors.greenDark,
                     fontSize: 14,
@@ -297,7 +297,7 @@ class _BackendAuthorityCard extends StatelessWidget {
           SizedBox(height: 10),
           _AuthorityLine(
             icon: Icons.cloud_done_outlined,
-            text: 'Laravel supplies the active commission policy and amounts.',
+            text: 'Getin supplies the active commission policy and amounts.',
           ),
           _AuthorityLine(
             icon: Icons.history_rounded,
@@ -306,7 +306,7 @@ class _BackendAuthorityCard extends StatelessWidget {
           ),
           _AuthorityLine(
             icon: Icons.lock_outline_rounded,
-            text: 'Flutter cannot edit commission rules or payout adjustments.',
+            text: 'Drivers cannot edit commission rules or payout adjustments.',
             last: true,
           ),
         ],

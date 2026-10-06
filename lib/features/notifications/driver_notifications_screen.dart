@@ -202,7 +202,7 @@ class _DriverNotificationsScreenState extends State<DriverNotificationsScreen> {
             if (_repository.source == DriverNotificationDataSource.demo) ...[
               const SizedBox(height: 10),
               const Text(
-                'DEMO NOTIFICATIONS • Not connected to Laravel or push delivery',
+                'TEST DATA • Local notification preview',
                 style: TextStyle(
                   color: AppColors.warning,
                   fontSize: 10.5,
@@ -599,7 +599,7 @@ class _NotificationPolicyCard extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Notification content, read state and future push/deep-link actions must come from Laravel. The demo only proves the Driver App notification experience.',
+              'Notification content and read state are shown here as a local preview in this non-production build.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 11.5,

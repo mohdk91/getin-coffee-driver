@@ -198,7 +198,7 @@ class _DemoStartNotice extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Development demo. Start Delivery is stored only in this app session. Laravel and the Customer App are not updated.',
+              'Test mode is active. Start Delivery is stored only in this non-production session.',
               style: TextStyle(
                 color: AppColors.greenDark,
                 fontSize: 11.5,
@@ -435,7 +435,7 @@ class _StartReceiptCard extends StatelessWidget {
             label: 'Server',
             value: receipt.serverAcknowledged
                 ? 'Acknowledged'
-                : 'Demo only — not acknowledged by Laravel',
+                : 'Local test session',
           ),
           const SizedBox(height: 9),
           const Text(

@@ -330,7 +330,7 @@ class _DriverSecurityScreenState extends State<DriverSecurityScreen> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Development security data is local demo data. Password/PIN changes, sessions and logout do not represent a Laravel account session yet. Biometric support is architecture-ready only and does not claim native enrollment.',
+                        'Test security data is local to this non-production build. Password, PIN, session and logout changes do not affect a live account.',
                         style: TextStyle(
                           color: AppColors.info,
                           fontSize: 12,
@@ -872,7 +872,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
             ),
             const SizedBox(height: 5),
             const Text(
-              'Development demo password: Driver123!',
+              'Test password: Driver123!',
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 16),

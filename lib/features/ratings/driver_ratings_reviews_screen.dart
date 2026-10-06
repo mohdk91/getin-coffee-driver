@@ -174,7 +174,7 @@ class _DriverRatingsReviewsScreenState
             if (_repository.source == DriverRatingsDataSource.demo) ...[
               const SizedBox(height: 10),
               const Text(
-                'DEMO RATINGS • Not connected to Laravel customer reviews',
+                'TEST DATA • Local ratings preview',
                 style: TextStyle(
                   color: AppColors.warning,
                   fontSize: 10.5,

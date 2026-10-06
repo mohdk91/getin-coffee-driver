@@ -114,10 +114,10 @@ class DemoDriverProfileRepository implements DriverProfileRepository {
 
     return DriverProfileLoadResult.success(
       DriverProfileSnapshot(
-        fullName: 'Demo Driver',
+        fullName: 'Test Driver',
         phone: '+20 100 000 0000',
         email: 'driver@getin.local',
-        driverId: 'DRV-DEMO-001',
+        driverId: 'DRV-0001',
         verificationStatus: DriverProfileVerificationStatus.approved,
         assignedRegion: 'East Alexandria',
         assignedBranches: const ['Stanley', 'San Stefano'],
@@ -136,7 +136,7 @@ class UnavailableDriverProfileRepository implements DriverProfileRepository {
   @override
   Future<DriverProfileLoadResult> loadProfile() async {
     return const DriverProfileLoadResult.failure(
-      'Driver profile data is not connected to the Laravel API yet. Getin will not invent production identity, contact or assignment details.',
+      'Driver profile is unavailable right now. Please try again later.',
     );
   }
 }

@@ -61,7 +61,7 @@ void main() {
     expect(find.text('Driver Login'), findsOneWidget);
     expect(
       find.text(
-        'Authentication API is not connected. Login actions will not be marked successful.',
+        'Sign-in service is unavailable right now. Please try again later.',
       ),
       findsOneWidget,
     );

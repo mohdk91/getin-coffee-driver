@@ -27,9 +27,7 @@ void main() {
     expect(find.text('Mobile'), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Phone number'), findsOneWidget);
-    expect(
-        find.text(
-            'Local demo authentication. No SMS, email, or backend request is sent.'),
+    expect(find.text('Test sign-in is enabled for this non-production build.'),
         findsOneWidget);
 
     await tester.tap(find.text('Email'));

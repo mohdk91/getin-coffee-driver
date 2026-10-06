@@ -154,7 +154,7 @@ class _DriverOtpScreenState extends State<DriverOtpScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Task #3 demo OTP codes',
+                'Test access codes',
                 style: TextStyle(
                   color: AppColors.greenDark,
                   fontSize: 20,
@@ -174,7 +174,7 @@ class _DriverOtpScreenState extends State<DriverOtpScreen> {
               _DemoCodeRow('999999', 'Too many attempts'),
               SizedBox(height: 12),
               Text(
-                'These codes exist only in the local demo repository. They are not real authentication codes.',
+                'These codes are available only in this non-production build.',
                 style: TextStyle(
                   color: AppColors.muted,
                   fontSize: 12,

@@ -95,9 +95,14 @@ class DriverAuthModeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final demo = source == DriverAuthSource.demo;
-    final background = demo ? const Color(0xFFF0E8D4) : const Color(0xFFFFECEC);
-    final foreground = demo ? AppColors.greenDark : AppColors.danger;
+    if (source == DriverAuthSource.api) {
+      return const SizedBox.shrink();
+    }
+
+    final testMode = source == DriverAuthSource.demo;
+    final background =
+        testMode ? const Color(0xFFF0E8D4) : const Color(0xFFFFECEC);
+    final foreground = testMode ? AppColors.greenDark : AppColors.danger;
 
     return Container(
       padding: const EdgeInsets.all(13),
@@ -109,16 +114,16 @@ class DriverAuthModeBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            demo ? Icons.science_outlined : Icons.cloud_off_outlined,
+            testMode ? Icons.science_outlined : Icons.cloud_off_outlined,
             size: 20,
             color: foreground,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              demo
-                  ? 'Local demo authentication. No SMS, email, or backend request is sent.'
-                  : 'Authentication API is not connected. Login actions will not be marked successful.',
+              testMode
+                  ? 'Test sign-in is enabled for this non-production build.'
+                  : 'Sign-in service is unavailable right now. Please try again later.',
               style: TextStyle(
                 color: foreground,
                 fontSize: 12.5,
@@ -127,7 +132,7 @@ class DriverAuthModeBanner extends StatelessWidget {
               ),
             ),
           ),
-          if (demo && onDemoHelp != null) ...[
+          if (testMode && onDemoHelp != null) ...[
             const SizedBox(width: 6),
             TextButton(
               onPressed: onDemoHelp,
@@ -137,7 +142,7 @@ class DriverAuthModeBanner extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Demo help'),
+              child: const Text('Test access'),
             ),
           ],
         ],

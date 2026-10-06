@@ -10,10 +10,10 @@ void main() {
 
     expect(result.isSuccess, isTrue);
     expect(repository.source, DriverProfileDataSource.demo);
-    expect(result.profile!.fullName, 'Demo Driver');
+    expect(result.profile!.fullName, 'Test Driver');
     expect(result.profile!.phone, isNotEmpty);
     expect(result.profile!.email, 'driver@getin.local');
-    expect(result.profile!.driverId, 'DRV-DEMO-001');
+    expect(result.profile!.driverId, 'DRV-0001');
     expect(
       result.profile!.verificationStatus,
       DriverProfileVerificationStatus.approved,
@@ -32,6 +32,8 @@ void main() {
     expect(repository.source, DriverProfileDataSource.api);
     expect(result.isSuccess, isFalse);
     expect(result.profile, isNull);
-    expect(result.errorMessage, contains('Laravel API'));
+    expect(result.errorMessage, contains('unavailable right now'));
+    expect(result.errorMessage, isNot(contains('Laravel')));
+    expect(result.errorMessage, isNot(contains('API')));
   });
 }

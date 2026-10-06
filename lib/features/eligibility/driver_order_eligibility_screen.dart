@@ -162,7 +162,7 @@ class _DemoEligibilityBanner extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Development demo. The eligibility engine is local and deterministic. Laravel will become the authority for job visibility and atomic availability later.',
+              'Test-mode eligibility uses local data in this non-production build.',
               style: TextStyle(
                 color: AppColors.greenDark,
                 fontSize: 12,

@@ -25,8 +25,8 @@ void main() {
 
     expect(find.text('Driver Commissions'), findsOneWidget);
     expect(find.text('Commission policy'), findsOneWidget);
-    expect(find.textContaining('DEMO COMMISSION POLICY'), findsOneWidget);
-    expect(find.text('Backend is the source of truth'), findsOneWidget);
+    expect(find.textContaining('TEST DATA'), findsOneWidget);
+    expect(find.text('Getin pay rules are authoritative'), findsOneWidget);
     expect(find.text('Base delivery earning'), findsOneWidget);
     expect(find.text('Distance bonus'), findsWidgets);
     expect(find.text('Peak bonus'), findsWidgets);
@@ -52,6 +52,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Commission policy'), findsOneWidget);
-    expect(find.text('Backend is the source of truth'), findsOneWidget);
+    expect(find.text('Getin pay rules are authoritative'), findsOneWidget);
   });
 }
