@@ -5,6 +5,7 @@ import '../../core/offline/driver_offline_safety.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
+import '../../core/widgets/driver_v2_ui.dart';
 import '../../core/widgets/getin_action_button.dart';
 import '../../core/widgets/status_pill.dart';
 import '../eligibility/data/driver_order_eligibility_repository.dart';
@@ -210,11 +211,6 @@ class _DriverAvailableOrdersScreenState
                 eligibleCount: eligibleOrders.length,
                 availability: snapshot.context.availability,
               ),
-              if (widget.repository.source ==
-                  DriverOrderEligibilityDataSource.demo) ...[
-                const SizedBox(height: 12),
-                const _DemoOrdersBanner(),
-              ],
               if (_acceptedOrder != null) ...[
                 const SizedBox(height: 12),
                 _AcceptedOrderBanner(acceptedOrder: _acceptedOrder!),
@@ -270,81 +266,19 @@ class _OrdersHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Available / New Orders',
-                style: TextStyle(
-                  color: AppColors.greenDark,
-                  fontSize: 23,
-                  height: 1.05,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                eligibleCount == 1
-                    ? '1 delivery currently matches your operational eligibility.'
-                    : '$eligibleCount deliveries currently match your operational eligibility.',
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12.5,
-                  height: 1.45,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        StatusPill(
-          label: availability.label,
-          tone: availability == DriverAvailabilityState.online
-              ? StatusTone.success
-              : StatusTone.warning,
-          icon: availability == DriverAvailabilityState.online
-              ? Icons.radio_button_checked_rounded
-              : Icons.pause_circle_outline_rounded,
-        ),
-      ],
-    );
-  }
-}
-
-class _DemoOrdersBanner extends StatelessWidget {
-  const _DemoOrdersBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.beige.withOpacity(.24),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.science_outlined, color: AppColors.green, size: 20),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'DEMO ORDERS • Jobs and atomic acceptance locks are simulated locally for development. No live Laravel order is offered, reserved, or changed.',
-              style: TextStyle(
-                color: AppColors.greenDark,
-                fontSize: 11,
-                height: 1.4,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
+    return DriverSectionHeading(
+      title: 'New orders',
+      subtitle: eligibleCount == 1
+          ? '1 eligible delivery is ready.'
+          : '$eligibleCount eligible deliveries are ready.',
+      trailing: StatusPill(
+        label: availability.label,
+        tone: availability == DriverAvailabilityState.online
+            ? StatusTone.success
+            : StatusTone.warning,
+        icon: availability == DriverAvailabilityState.online
+            ? Icons.radio_button_checked_rounded
+            : Icons.pause_circle_outline_rounded,
       ),
     );
   }
@@ -374,53 +308,76 @@ class _AvailableOrderCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: EdgeInsets.all(compact ? 14 : 16),
+        padding: EdgeInsets.all(compact ? 13 : 15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DriverBranchThumbnail(
+                  branchName: order.pickupBranch,
+                  width: compact ? 72 : 78,
+                  height: compact ? 72 : 78,
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              order.orderNumber,
+                              style: const TextStyle(
+                                color: AppColors.greenDark,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          _EarningBadge(order: order),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
                       Text(
-                        order.orderNumber,
+                        order.pickupBranch,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.greenDark,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${order.pickupBranch} → ${order.destinationArea}',
+                        '→ ${order.destinationArea}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.muted,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                _EarningBadge(order: order),
               ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 13),
             _RouteSummary(order: order),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 7,
+              runSpacing: 7,
               children: [
                 _OrderFactChip(
                   icon: Icons.route_outlined,
                   label:
-                      '${order.distanceToBranchKm.toStringAsFixed(1)} km to branch',
+                      '${order.distanceToBranchKm.toStringAsFixed(1)} km pickup',
                 ),
                 _OrderFactChip(
                   icon: Icons.local_shipping_outlined,
@@ -439,44 +396,54 @@ class _AvailableOrderCard extends StatelessWidget {
               ],
             ),
             if (acceptanceResult != null) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               _AcceptanceFeedback(result: acceptanceResult!),
             ],
-            const SizedBox(height: 16),
-            GetinActionButton(
-              label: accepting
-                  ? 'Accepting…'
-                  : acceptanceLocked
-                      ? 'Acceptance locked'
-                      : acceptanceResult?.isAccepted == true
-                          ? 'Accepted'
-                          : acceptanceResult?.canRetry == true
-                              ? 'Retry Accept'
-                              : acceptanceResult?.outcome ==
-                                      DriverOrderAcceptanceOutcome.alreadyTaken
-                                  ? 'Already Taken'
-                                  : 'Accept Delivery',
-              icon: accepting
-                  ? Icons.hourglass_top_rounded
-                  : acceptanceResult?.isAccepted == true
-                      ? Icons.check_circle_rounded
-                      : acceptanceResult?.canRetry == true
-                          ? Icons.refresh_rounded
-                          : Icons.check_circle_outline_rounded,
-              onPressed: accepting ||
-                      acceptanceLocked ||
-                      acceptanceResult?.isAccepted == true ||
-                      acceptanceResult?.outcome ==
-                          DriverOrderAcceptanceOutcome.alreadyTaken
-                  ? null
-                  : onAccept,
-            ),
-            const SizedBox(height: 8),
-            GetinActionButton(
-              label: 'Details',
-              icon: Icons.info_outline_rounded,
-              onPressed: onDetails,
-              secondary: true,
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: GetinActionButton(
+                    label: accepting
+                        ? 'Accepting…'
+                        : acceptanceLocked
+                            ? 'Acceptance locked'
+                            : acceptanceResult?.isAccepted == true
+                                ? 'Accepted'
+                                : acceptanceResult?.canRetry == true
+                                    ? 'Retry Accept'
+                                    : acceptanceResult?.outcome ==
+                                            DriverOrderAcceptanceOutcome
+                                                .alreadyTaken
+                                        ? 'Already Taken'
+                                        : 'Accept Delivery',
+                    icon: accepting
+                        ? Icons.hourglass_top_rounded
+                        : acceptanceResult?.isAccepted == true
+                            ? Icons.check_circle_rounded
+                            : acceptanceResult?.canRetry == true
+                                ? Icons.refresh_rounded
+                                : Icons.check_circle_outline_rounded,
+                    onPressed: accepting ||
+                            acceptanceLocked ||
+                            acceptanceResult?.isAccepted == true ||
+                            acceptanceResult?.outcome ==
+                                DriverOrderAcceptanceOutcome.alreadyTaken
+                        ? null
+                        : onAccept,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GetinActionButton(
+                    label: 'Details',
+                    icon: Icons.info_outline_rounded,
+                    onPressed: onDetails,
+                    secondary: true,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

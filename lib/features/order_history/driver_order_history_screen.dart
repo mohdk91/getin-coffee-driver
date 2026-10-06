@@ -5,6 +5,7 @@ import '../../core/offline/driver_offline_safety.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
+import '../../core/widgets/driver_v2_ui.dart';
 import '../../core/widgets/status_pill.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
 import '../eligibility/data/driver_order_eligibility_repository.dart';
@@ -136,8 +137,7 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
           driverEarning: 0,
           currencyCode: 'EGP',
         ),
-      if (widget.lastCompletedDelivery != null &&
-          !completedOrderAlreadyLoaded)
+      if (widget.lastCompletedDelivery != null && !completedOrderAlreadyLoaded)
         DriverOrderHistoryItem(
           orderNumber: widget.lastCompletedDelivery!.orderNumber,
           pickupBranch: widget.lastCompletedDelivery!.pickupBranch,
@@ -284,26 +284,11 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Orders',
-                  style: TextStyle(
-                      color: AppColors.greenDark,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 5),
-              const Text(
-                  'New, active, delivered and cancelled deliveries in one place.',
-                  style: TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600)),
-              if (_repository.source == DriverOrderHistoryDataSource.demo) ...[
-                const SizedBox(height: 10),
-                const Text('DEMO HISTORY • Laravel is not connected',
-                    style: TextStyle(
-                        color: AppColors.warning,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900)),
-              ],
+              const DriverSectionHeading(
+                title: 'Orders',
+                subtitle:
+                    'Find your next job or jump back into an active delivery.',
+              ),
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -315,7 +300,7 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
                       onChanged: (_) => setState(() {}),
                       textInputAction: TextInputAction.search,
                       decoration: const InputDecoration(
-                        hintText: 'Search order number',
+                        hintText: 'Search order, branch or area',
                         prefixIcon: Icon(Icons.search_rounded),
                       ),
                     ),
@@ -341,11 +326,9 @@ class _DriverOrderHistoryScreenState extends State<DriverOrderHistoryScreen>
             return TabBar(
               controller: _tabs,
               isScrollable: !compact,
-              tabAlignment:
-                  compact ? TabAlignment.fill : TabAlignment.start,
-              labelPadding: compact
-                  ? const EdgeInsets.symmetric(horizontal: 3)
-                  : null,
+              tabAlignment: compact ? TabAlignment.fill : TabAlignment.start,
+              labelPadding:
+                  compact ? const EdgeInsets.symmetric(horizontal: 3) : null,
               labelColor: AppColors.greenDark,
               unselectedLabelColor: AppColors.muted,
               indicatorColor: AppColors.green,
@@ -461,57 +444,146 @@ class _HistoryOrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.all(13),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DriverBranchThumbnail(
+                  branchName: item.pickupBranch,
+                  width: 72,
+                  height: 72,
+                ),
+                const SizedBox(width: 12),
                 Expanded(
-                    child: Text(item.orderNumber,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.orderNumber,
+                              style: const TextStyle(
+                                color: AppColors.greenDark,
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          StatusPill(label: item.state.label, tone: _tone),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        item.pickupBranch,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: AppColors.greenDark,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900))),
-                StatusPill(label: item.state.label, tone: _tone),
+                          color: AppColors.greenDark,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 13,
+                            color: AppColors.gold,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              item.destinationArea,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            Text('${item.pickupBranch} → ${item.destinationArea}',
-                style: const TextStyle(
-                    color: AppColors.greenDark, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 5),
-            Text(_dateText(item.occurredAt),
-                style: const TextStyle(
+            const SizedBox(height: 11),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  color: AppColors.muted,
+                  size: 15,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    _dateText(item.occurredAt),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (item.bagCount > 0) ...[
+                  const Icon(
+                    Icons.shopping_bag_outlined,
                     color: AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-            if (item.note != null) ...[
-              const SizedBox(height: 8),
-              Text(item.note!,
-                  style: const TextStyle(
-                      color: AppColors.muted, fontSize: 12, height: 1.4)),
-            ],
-            if (item.driverEarning > 0 || item.bagCount > 0) ...[
-              const Divider(height: 22),
-              Row(
-                children: [
-                  if (item.bagCount > 0)
-                    Text(
-                        '${item.bagCount} ${item.bagCount == 1 ? 'bag' : 'bags'}',
-                        style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
-                  const Spacer(),
-                  if (item.driverEarning > 0)
-                    Text(
-                        '${item.currencyCode} ${item.driverEarning.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                            color: AppColors.greenDark,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900)),
+                    size: 15,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${item.bagCount} ${item.bagCount == 1 ? 'bag' : 'bags'}',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
+                if (item.driverEarning > 0) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    '${item.currencyCode} ${item.driverEarning.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: AppColors.greenDark,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (item.note != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.cream,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  item.note!,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 10.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ],
