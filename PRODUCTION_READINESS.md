@@ -39,3 +39,10 @@ Before a production release, run at minimum:
 - physical-device tests for small Android screens, background/resume, permission changes, GPS disabled/stale/inaccurate states, slow/no network, process kill/restart, and each critical order transition
 
 A successful Task #40 validation means the current Flutter client passes its local QA/hardening suite. It does not mean the app is production-connected until the blockers above are completed.
+
+
+## Phase E release-candidate status
+
+Tasks 278–282 harden production recovery, device readiness, cross-system release checks, UI/security/performance auditing, and the final release gate. The Driver app must not be labeled release-candidate-ready until `tool/release/rc_gate.sh` reports `RC_STATUS=READY`.
+
+The gate blocks release when native Driver push is not configured. Laravel already supports transactional FCM delivery, but the Flutter Driver client still requires `firebase_messaging`, `android/app/google-services.json`, and `ios/Runner/GoogleService-Info.plist` from the real Firebase project. Android release signing and production backend push configuration are also required.

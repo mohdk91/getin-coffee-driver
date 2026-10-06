@@ -27,7 +27,7 @@ flutter pub get
 flutter build appbundle --release \
   --build-name="$GETIN_BUILD_NAME" \
   --build-number="$GETIN_BUILD_NUMBER" \
-  --dart-define=APP_ENV=production \
+  --dart-define=APP_ENV=prod \
   --dart-define=API_BASE_URL="$GETIN_API_BASE_URL"
 
 echo "Driver Android production App Bundle: PASS"

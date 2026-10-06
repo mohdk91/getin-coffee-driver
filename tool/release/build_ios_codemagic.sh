@@ -22,7 +22,7 @@ flutter pub get
 flutter build ipa --release \
   --build-name="$GETIN_BUILD_NAME" \
   --build-number="$GETIN_BUILD_NUMBER" \
-  --dart-define=APP_ENV=production \
+  --dart-define=APP_ENV=prod \
   --dart-define=API_BASE_URL="$GETIN_API_BASE_URL"
 
 echo "Driver iOS production IPA build: PASS"
