@@ -267,7 +267,7 @@ class _OrdersHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DriverSectionHeading(
-      title: 'New orders',
+      title: 'Available / New Orders',
       subtitle: eligibleCount == 1
           ? '1 eligible delivery is ready.'
           : '$eligibleCount eligible deliveries are ready.',

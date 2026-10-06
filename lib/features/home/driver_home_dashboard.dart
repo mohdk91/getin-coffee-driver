@@ -337,40 +337,34 @@ class _HeaderSummary extends StatelessWidget {
       DriverAvailabilityState.onBreak => StatusTone.warning,
     };
     final active = snapshot.activeDelivery;
+    final compact = MediaQuery.sizeOf(context).width < 350;
 
-    return Container(
-      height: active == null ? 196 : 210,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.greenDark,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            'assets/images/branches/getin_stanley.png',
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        constraints: BoxConstraints(minHeight: compact ? 188 : 196),
+        decoration: const BoxDecoration(
+          color: AppColors.greenDark,
+          image: DecorationImage(
+            image: AssetImage('assets/images/branches/getin_stanley.png'),
             fit: BoxFit.cover,
             alignment: Alignment.center,
-            errorBuilder: (_, __, ___) => const ColoredBox(
-              color: AppColors.greenDark,
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [
+                AppColors.greenDark.withOpacity(.25),
+                AppColors.greenDark.withOpacity(.88),
+                AppColors.greenDark,
+              ],
             ),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [
-                  AppColors.greenDark.withOpacity(.25),
-                  AppColors.greenDark.withOpacity(.88),
-                  AppColors.greenDark,
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 15 : 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -397,14 +391,16 @@ class _HeaderSummary extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Spacer(),
+                SizedBox(height: compact ? 44 : 58),
                 Text(
                   active == null
                       ? 'Ready for your shift?'
                       : 'Delivery in progress',
-                  style: const TextStyle(
+                  maxLines: compact ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     color: AppColors.white,
-                    fontSize: 27,
+                    fontSize: compact ? 24 : 27,
                     height: 1.05,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -.55,
@@ -422,11 +418,11 @@ class _HeaderSummary extends StatelessWidget {
                           DriverAvailabilityState.onBreak =>
                             'Your break is active. Resume when you are ready.',
                         },
-                  maxLines: 2,
+                  maxLines: compact ? 3 : 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.beige,
-                    fontSize: 12.5,
+                    fontSize: compact ? 11.5 : 12.5,
                     height: 1.35,
                     fontWeight: FontWeight.w600,
                   ),
@@ -434,7 +430,7 @@ class _HeaderSummary extends StatelessWidget {
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -608,6 +604,16 @@ class _ActiveDeliveryCard extends StatelessWidget {
             label: 'Destination',
             value: delivery.destinationArea,
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Complete ${delivery.orderNumber} before receiving another delivery offer.',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 10.5,
+              height: 1.35,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           if (onResume != null) ...[
             const SizedBox(height: 16),
             SizedBox(
@@ -739,12 +745,23 @@ class _DashboardMetrics extends StatelessWidget {
       ),
     ];
 
+    if (compact) {
+      return Column(
+        children: [
+          for (var index = 0; index < metrics.length; index++) ...[
+            if (index > 0) const SizedBox(height: 10),
+            _MetricCard(data: metrics[index]),
+          ],
+        ],
+      );
+    }
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: metrics.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: compact ? 1 : 2,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
         mainAxisExtent: 122,
