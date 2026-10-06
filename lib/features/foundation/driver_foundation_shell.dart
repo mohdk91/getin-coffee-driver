@@ -434,7 +434,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       );
 
   Future<void> _openDriverTestLab() async {
-    if (!widget.config.uatDemoEnabled || _incomingOfferVisible) {
+    if (!widget.config.testLabEnabled || _incomingOfferVisible) {
       return;
     }
 
@@ -543,7 +543,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   Future<void> _resetIncomingOrderUatCompletedHistory() async {
-    if (!widget.config.uatDemoEnabled || !mounted) return;
+    if (!widget.config.testLabEnabled || !mounted) return;
 
     await _uatCompletedDeliveryStore.clear();
     if (!mounted) return;
@@ -558,7 +558,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   Future<void> _prepareIncomingOrderUatIdleDriver() async {
-    if (!widget.config.uatDemoEnabled || !mounted) return;
+    if (!widget.config.testLabEnabled || !mounted) return;
 
     // Starting a fresh UAT delivery is the explicit test-lab reset boundary.
     // A PIN lockout must survive reload/reopen/restart for the current order,
@@ -594,7 +594,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   }
 
   Future<void> _prepareIncomingOrderUatActiveDriver() async {
-    if (!widget.config.uatDemoEnabled || !mounted) return;
+    if (!widget.config.testLabEnabled || !mounted) return;
 
     const active = DriverActiveDeliverySummary(
       orderNumber: 'GD-UAT-ACTIVE',
@@ -865,7 +865,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
     DriverDeliveryCompletionReceipt receipt,
     DriverActiveDeliverySummary delivery,
   ) async {
-    if (!widget.config.uatDemoEnabled || !receipt.isDemo) return;
+    if (!widget.config.testLabEnabled || !receipt.isDemo) return;
 
     final uatOffer = _incomingOrderUatCandidate(
       _IncomingOrderUatScenario.idleBroadcast,
@@ -1184,7 +1184,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       DriverProfileScreen(
         config: widget.config,
         repository: widget.profileRepository,
-        onOpenTestLab: widget.config.uatDemoEnabled ? _openDriverTestLab : null,
+        onOpenTestLab: widget.config.testLabEnabled ? _openDriverTestLab : null,
       ),
     ];
 

@@ -231,7 +231,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             icon: Icons.security_rounded,
             onTap: _openSecurity,
           ),
-          if (widget.config.uatDemoEnabled && widget.onOpenTestLab != null) ...[
+          if (widget.config.testLabEnabled && widget.onOpenTestLab != null) ...[
             const SizedBox(height: 18),
             const DriverSectionHeading(
               title: 'Advanced',

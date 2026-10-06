@@ -60,14 +60,20 @@ class AppConfig {
   /// Demo repositories are available only to development/test builds.
   /// A compiled release must never silently fall back to local sample data.
   bool get allowsDemo =>
-      environment == AppEnvironment.development && !kReleaseMode;
+      environment == AppEnvironment.development &&
+      !kReleaseMode &&
+      !isApiConfigured;
 
   bool get isProduction => environment == AppEnvironment.production;
 
   /// Explicit visual-UAT controls are available only in development/debug.
   /// Passing UAT_DEMO=true can never activate them in staging, production,
   /// or a compiled release build.
-  bool get uatDemoEnabled => uatDemoRequested && allowsDemo && !isApiConfigured;
+  bool get testLabEnabled => uatDemoRequested && allowsDemo;
+
+  /// Backward-compatible alias for the existing local UAT stores and tests.
+  /// New presentation code should use [testLabEnabled].
+  bool get uatDemoEnabled => testLabEnabled;
 
   bool get requiresApi => !allowsDemo;
 
