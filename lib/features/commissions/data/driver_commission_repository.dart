@@ -44,7 +44,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
       final items = DriverApiContext.nestedItems(envelope);
       if (items.isEmpty || items.first is! Map) {
         return const DriverCommissionLoadResult.failure(
-          'No backend earning snapshot is available yet. Commission rules will appear after a server-calculated delivery earning exists.',
+          'No completed delivery earning is available yet. Commission details will appear after Getin records your first eligible earning.',
         );
       }
 
@@ -73,7 +73,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
       return DriverCommissionLoadResult.success(
         DriverCommissionPolicy(
           policyVersion: version == null
-              ? 'Backend earning ${raw['id'] ?? ''}'.trim()
+              ? 'Earning ${raw['id'] ?? ''}'.trim()
               : 'Policy v$version',
           currencyCode: currency,
           effectiveFrom: effectiveAt,
@@ -86,7 +86,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
               title: 'Base earning',
               calculationLabel: money('base_earning'),
               description:
-                  'Base component from the latest immutable Laravel earning snapshot.',
+                  'Base amount recorded for the latest completed delivery earning.',
             ),
             DriverCommissionRule(
               id: 'backend-distance',
@@ -95,7 +95,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
               calculationLabel:
                   '${money('distance_bonus')} • ${_amount(components['distance_km']).toStringAsFixed(1)} km',
               description:
-                  'Distance and bonus are calculated by Laravel. The Driver App does not recalculate distance commission.',
+                  'Distance and bonus amounts are confirmed by Getin for each eligible delivery.',
             ),
             DriverCommissionRule(
               id: 'backend-peak',
@@ -103,7 +103,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
               title: 'Peak bonus',
               calculationLabel: money('peak_bonus'),
               description:
-                  'Peak eligibility and amount are backend-owned and preserved with the earning snapshot.',
+                  'Peak eligibility and amount are confirmed with the delivery earning.',
             ),
             DriverCommissionRule(
               id: 'backend-tip',
@@ -111,7 +111,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
               title: 'Customer tip',
               calculationLabel: money('customer_tip'),
               description:
-                  'Customer tip component returned by the backend earning record.',
+                  'Customer tip recorded with the completed delivery earning.',
             ),
             DriverCommissionRule(
               id: 'backend-adjustment',
@@ -120,7 +120,7 @@ class ApiDriverCommissionRepository implements DriverCommissionRepository {
               calculationLabel:
                   '$currency ${(positive - negative).toStringAsFixed(2)}',
               description:
-                  'Positive and negative adjustments are operations-controlled and auditable in Laravel.',
+                  'Adjustments are controlled by Getin operations and remain visible in the earning record.',
             ),
           ],
         ),

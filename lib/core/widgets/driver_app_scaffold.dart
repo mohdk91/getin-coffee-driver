@@ -112,13 +112,23 @@ class DriverAppScaffold extends StatelessWidget {
               status: activeDeliveryStatus ?? 'Delivery in progress',
               onTap: onActiveDelivery!,
             ),
-          Expanded(child: body),
+          Expanded(
+            child: RepaintBoundary(
+              key: const Key('driver-primary-body-repaint-boundary'),
+              child: body,
+            ),
+          ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentTab.index,
-        onDestinationSelected: (index) => onTabChanged(DriverTab.values[index]),
-        destinations: destinations,
+      bottomNavigationBar: Semantics(
+        container: true,
+        label: 'Driver primary navigation',
+        child: NavigationBar(
+          selectedIndex: currentTab.index,
+          onDestinationSelected: (index) =>
+              onTabChanged(DriverTab.values[index]),
+          destinations: destinations,
+        ),
       ),
     );
   }

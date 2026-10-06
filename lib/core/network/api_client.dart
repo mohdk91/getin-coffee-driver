@@ -192,8 +192,10 @@ class ApiClient {
       request.add(await file.readAsBytes());
       request.write('\r\n--$boundary--\r\n');
       final response = await request.close().timeout(config.requestTimeout);
-      final body =
-          await utf8.decoder.bind(response).join().timeout(config.requestTimeout);
+      final body = await utf8.decoder
+          .bind(response)
+          .join()
+          .timeout(config.requestTimeout);
       final responseHeaders = <String, String>{};
       response.headers.forEach((header, values) {
         responseHeaders[header] = values.join(',');
@@ -327,7 +329,7 @@ class ApiClient {
         }
       } catch (error) {
         throw ApiException(
-          'The GETIN API returned an invalid JSON response.',
+          'GETIN returned an invalid response. Please try again.',
           statusCode: response.statusCode,
           cause: error,
           kind: ApiFailureKind.invalidResponse,
@@ -339,7 +341,8 @@ class ApiClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final rawErrors = payload['errors'];
       throw ApiException(
-        payload['message']?.toString() ?? 'The GETIN API request failed.',
+        payload['message']?.toString() ??
+            'The GETIN request could not be completed.',
         statusCode: response.statusCode,
         errors: rawErrors is Map
             ? Map<String, dynamic>.from(rawErrors)
@@ -352,6 +355,7 @@ class ApiClient {
 
     return payload;
   }
+
   ApiException _transportFailure(Object? error, {required String requestId}) {
     if (error is TimeoutException) {
       return ApiException(
@@ -370,13 +374,12 @@ class ApiClient {
       );
     }
     return ApiException(
-      'Unable to reach the GETIN API.',
+      'Unable to reach GETIN. Check your connection and try again.',
       cause: error,
       kind: ApiFailureKind.unknown,
       requestId: requestId,
     );
   }
-
 
   String _newRequestId() {
     final provided = requestIdProvider?.call().trim();

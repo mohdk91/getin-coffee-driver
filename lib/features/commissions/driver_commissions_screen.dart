@@ -118,7 +118,7 @@ class _DriverCommissionsScreenState extends State<DriverCommissionsScreen> {
             const SizedBox(height: 16),
             _PolicySummaryCard(policy: policy),
             const SizedBox(height: 14),
-            const _BackendAuthorityCard(),
+            const _PayRulesAuthorityCard(),
             const SizedBox(height: 18),
             Row(
               children: [
@@ -203,7 +203,7 @@ class _PolicySummaryCard extends StatelessWidget {
           _PolicyInfoRow(
             label: 'Effective until',
             value: policy.effectiveUntil == null
-                ? 'Until replaced by backend'
+                ? 'Until replaced by Getin'
                 : _formatDate(policy.effectiveUntil!),
           ),
           _PolicyInfoRow(
@@ -263,8 +263,8 @@ class _PolicyInfoRow extends StatelessWidget {
   }
 }
 
-class _BackendAuthorityCard extends StatelessWidget {
-  const _BackendAuthorityCard();
+class _PayRulesAuthorityCard extends StatelessWidget {
+  const _PayRulesAuthorityCard();
 
   @override
   Widget build(BuildContext context) {
