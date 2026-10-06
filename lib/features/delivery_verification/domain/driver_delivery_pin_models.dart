@@ -18,6 +18,9 @@ class DriverDeliveryPinChallenge {
   final int codeLength;
   final DateTime expiresAt;
   final DateTime? usedAt;
+  final int failedAttempts;
+  final int maxAttempts;
+  final DateTime? lockedAt;
 
   const DriverDeliveryPinChallenge({
     required this.orderNumber,
@@ -26,10 +29,16 @@ class DriverDeliveryPinChallenge {
     required this.codeLength,
     required this.expiresAt,
     this.usedAt,
+    this.failedAttempts = 0,
+    this.maxAttempts = 3,
+    this.lockedAt,
   });
 
   bool get isUsed => usedAt != null;
   bool get isExpired => DateTime.now().isAfter(expiresAt);
+  bool get isAttemptLocked => failedAttempts >= maxAttempts;
+  int get remainingAttempts =>
+      failedAttempts >= maxAttempts ? 0 : maxAttempts - failedAttempts;
 }
 
 class DriverDeliveryPinLoadResult {

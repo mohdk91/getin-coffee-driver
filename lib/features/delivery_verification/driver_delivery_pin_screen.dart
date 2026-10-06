@@ -74,10 +74,17 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
     );
     if (!mounted) return;
 
+    final challenge = result.challenge;
+    final attemptLocked = challenge?.isAttemptLocked ?? false;
     setState(() {
       _loading = false;
-      _challenge = result.challenge;
+      _challenge = challenge;
       _loadError = result.errorMessage;
+      if (attemptLocked) {
+        _failureReason = DriverDeliveryPinFailureReason.tooManyAttempts;
+        _verificationError =
+            'Too many unsuccessful verification attempts. Delivery remains locked. Contact Getin Support before trying again.';
+      }
     });
   }
 
@@ -179,9 +186,13 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
   }
 
   String _issueActionLabel(DriverDeliveryPinFailureReason reason) {
-    return reason == DriverDeliveryPinFailureReason.invalidCode
-        ? 'Try Code Again'
-        : 'Reload Verification';
+    if (reason == DriverDeliveryPinFailureReason.invalidCode) {
+      return 'Try Code Again';
+    }
+    if (reason == DriverDeliveryPinFailureReason.tooManyAttempts) {
+      return 'Refresh Lockout Status';
+    }
+    return 'Reload Verification';
   }
 
   void _retryIssue() {
@@ -194,6 +205,7 @@ class _DriverDeliveryPinScreenState extends State<DriverDeliveryPinScreen> {
       _controller.clear();
       return;
     }
+    FocusScope.of(context).unfocus();
     _controller.clear();
     _loadChallenge();
   }

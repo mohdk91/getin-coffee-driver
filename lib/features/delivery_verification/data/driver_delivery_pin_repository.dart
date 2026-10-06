@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/uat/driver_uat_pin_lockout_store.dart';
 import '../domain/driver_delivery_pin_models.dart';
 
 abstract interface class DriverDeliveryPinRepository {
@@ -39,7 +40,9 @@ class DriverDeliveryPinRepositoryFactory {
 
 class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
   final DriverApiContext context;
-  const ApiDriverDeliveryPinRepository(this.context);
+  final Set<int> _rateLimitedOrderIds = <int>{};
+
+  ApiDriverDeliveryPinRepository(this.context);
 
   @override
   DriverDeliveryPinDataSource get source => DriverDeliveryPinDataSource.api;
@@ -54,6 +57,7 @@ class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
         'The active delivery is missing its Laravel order identifier.',
       );
     }
+    final rateLimited = _rateLimitedOrderIds.contains(apiOrderId);
     return DriverDeliveryPinLoadResult.success(
       DriverDeliveryPinChallenge(
         orderNumber: orderNumber,
@@ -61,6 +65,9 @@ class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
         assignedDriverReference: 'server-authenticated-driver',
         codeLength: 6,
         expiresAt: DateTime.now().add(const Duration(hours: 1)),
+        failedAttempts: rateLimited ? 3 : 0,
+        maxAttempts: 3,
+        lockedAt: rateLimited ? DateTime.now() : null,
       ),
     );
   }
@@ -78,6 +85,13 @@ class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
       return const DriverDeliveryPinVerificationResult.failure(
         reason: DriverDeliveryPinFailureReason.unavailable,
         message: 'The active delivery is missing its Laravel order identifier.',
+      );
+    }
+    if (_rateLimitedOrderIds.contains(apiOrderId)) {
+      return const DriverDeliveryPinVerificationResult.failure(
+        reason: DriverDeliveryPinFailureReason.tooManyAttempts,
+        message:
+            'Too many unsuccessful verification attempts. Delivery remains locked. Contact Getin Support before trying again.',
       );
     }
     try {
@@ -109,6 +123,9 @@ class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
             'Delivery PIN verified by Getin.',
       );
     } on ApiException catch (error) {
+      if (error.statusCode == 429) {
+        _rateLimitedOrderIds.add(apiOrderId);
+      }
       return DriverDeliveryPinVerificationResult.failure(
         reason: error.statusCode == 429
             ? DriverDeliveryPinFailureReason.tooManyAttempts
@@ -126,10 +143,16 @@ class ApiDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
 
 class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
   static const String demoCode = '4821';
+  static const int maxAttempts = 3;
+
   final Set<String> _usedOrderNumbers = <String>{};
   final Map<String, DateTime> _usedAt = <String, DateTime>{};
-  final Map<String, int> _failedAttempts = <String, int>{};
-  static const int maxAttempts = 3;
+  final DriverUatPinLockoutStore lockoutStore;
+
+  DemoDriverDeliveryPinRepository({
+    DriverUatPinLockoutStore? lockoutStore,
+  }) : lockoutStore =
+            lockoutStore ?? SharedPreferencesDriverUatPinLockoutStore();
 
   @override
   DriverDeliveryPinDataSource get source => DriverDeliveryPinDataSource.demo;
@@ -143,6 +166,7 @@ class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
 
     final normalized = orderNumber.trim().toUpperCase();
     final usedAt = _usedAt[normalized];
+    final lockout = await lockoutStore.load(normalized);
 
     return DriverDeliveryPinLoadResult.success(
       DriverDeliveryPinChallenge(
@@ -152,6 +176,9 @@ class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
         codeLength: 4,
         expiresAt: DateTime.now().add(const Duration(minutes: 20)),
         usedAt: usedAt,
+        failedAttempts: lockout.failedAttempts,
+        maxAttempts: maxAttempts,
+        lockedAt: lockout.lockedAt,
       ),
     );
   }
@@ -209,8 +236,8 @@ class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
       );
     }
 
-    final failedAttempts = _failedAttempts[normalizedOrder] ?? 0;
-    if (failedAttempts >= maxAttempts) {
+    final lockout = await lockoutStore.load(normalizedOrder);
+    if (lockout.isLocked(maxAttempts)) {
       return const DriverDeliveryPinVerificationResult.failure(
         reason: DriverDeliveryPinFailureReason.tooManyAttempts,
         message:
@@ -219,16 +246,18 @@ class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
     }
 
     if (normalizedCode != demoCode) {
-      final nextAttempts = failedAttempts + 1;
-      _failedAttempts[normalizedOrder] = nextAttempts;
-      if (nextAttempts >= maxAttempts) {
+      final next = await lockoutStore.recordFailure(
+        orderNumber: normalizedOrder,
+        maxAttempts: maxAttempts,
+      );
+      if (next.isLocked(maxAttempts)) {
         return const DriverDeliveryPinVerificationResult.failure(
           reason: DriverDeliveryPinFailureReason.tooManyAttempts,
           message:
               'Too many unsuccessful verification attempts. Delivery remains locked. Contact Getin Support before trying again.',
         );
       }
-      final remaining = maxAttempts - nextAttempts;
+      final remaining = maxAttempts - next.failedAttempts;
       return DriverDeliveryPinVerificationResult.failure(
         reason: DriverDeliveryPinFailureReason.invalidCode,
         message:
@@ -237,7 +266,7 @@ class DemoDriverDeliveryPinRepository implements DriverDeliveryPinRepository {
     }
 
     final verifiedAt = DateTime.now();
-    _failedAttempts.remove(normalizedOrder);
+    await lockoutStore.clear(normalizedOrder);
     _usedOrderNumbers.add(normalizedOrder);
     _usedAt[normalizedOrder] = verifiedAt;
 

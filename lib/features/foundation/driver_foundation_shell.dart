@@ -8,6 +8,7 @@ import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
 import '../../core/offline/driver_offline_safety.dart';
 import '../../core/uat/driver_uat_completed_delivery_store.dart';
+import '../../core/uat/driver_uat_pin_lockout_store.dart';
 import '../../core/widgets/app_state_view.dart';
 import '../../core/widgets/driver_app_scaffold.dart';
 import '../active_delivery/domain/driver_delivery_state_machine.dart';
@@ -112,6 +113,8 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       DriverNavigationPushGuard();
   final DriverUatCompletedDeliveryStore _uatCompletedDeliveryStore =
       const SharedPreferencesDriverUatCompletedDeliveryStore();
+  final DriverUatPinLockoutStore _uatPinLockoutStore =
+      SharedPreferencesDriverUatPinLockoutStore();
 
   late final DriverRuntimeRecoveryStore _recoveryStore =
       widget.recoveryStore ?? SharedPreferencesDriverRuntimeRecoveryStore();
@@ -546,6 +549,12 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
 
   Future<void> _prepareIncomingOrderUatIdleDriver() async {
     if (!widget.config.uatDemoEnabled || !mounted) return;
+
+    // Starting a fresh UAT delivery is the explicit test-lab reset boundary.
+    // A PIN lockout must survive reload/reopen/restart for the current order,
+    // but a brand-new local UAT scenario needs clean verification state.
+    await _uatPinLockoutStore.clearAll();
+    if (!mounted) return;
 
     setState(() {
       _locallyAcceptedDelivery = null;
