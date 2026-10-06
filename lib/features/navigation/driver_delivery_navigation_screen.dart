@@ -131,8 +131,7 @@ class _DriverDeliveryNavigationScreenState
   bool _exceptionBelongsToActiveOrder(
     DriverDeliveryExceptionReceipt receipt,
   ) =>
-      _orderKey(receipt.orderNumber) ==
-      _orderKey(widget.delivery.orderNumber);
+      _orderKey(receipt.orderNumber) == _orderKey(widget.delivery.orderNumber);
 
   bool _advanceTimeline(
     DriverDeliveryState target, {
@@ -244,7 +243,8 @@ class _DriverDeliveryNavigationScreenState
 
   Future<void> _markArrivedAtCustomer() async {
     if (_timeline.currentState != DriverDeliveryState.outForDelivery) return;
-    if (!_ensureCriticalActionAvailable(DriverCriticalAction.arriveAtCustomer)) {
+    if (!_ensureCriticalActionAvailable(
+        DriverCriticalAction.arriveAtCustomer)) {
       return;
     }
     if (!await _confirmArrivalAtCustomer()) return;
@@ -435,6 +435,28 @@ class _DriverDeliveryNavigationScreenState
                   completion: _completionReceipt,
                 ),
                 const SizedBox(height: 14),
+                if (!_timeline.currentState.isProblemState) ...[
+                  _CustomerArrivalCard(
+                    state: _timeline.currentState,
+                    onArrived: _timeline.currentState ==
+                            DriverDeliveryState.outForDelivery
+                        ? _markArrivedAtCustomer
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+                  DriverDeliveryVerificationCard(
+                    receipt: _deliveryVerification,
+                    enabled: _customerArrivalConfirmed,
+                    lockedMessage:
+                        'Arrive at the customer first. Verification stays locked until the arrival state is confirmed.',
+                    onVerifyPin: _openDeliveryPinVerification,
+                    onVerifyQr: _openDeliveryQrVerification,
+                  ),
+                  const SizedBox(height: 14),
+                ] else ...[
+                  _DeliveryStateLockedNotice(state: _timeline.currentState),
+                  const SizedBox(height: 14),
+                ],
                 if (_loadingDestination)
                   const _DestinationLoadingCard()
                 else if (_destination != null) ...[
@@ -461,6 +483,7 @@ class _DriverDeliveryNavigationScreenState
                               DriverDeliveryState.verificationPending
                       ? 'Verification complete'
                       : null,
+                  initiallyExpanded: false,
                 ),
                 const SizedBox(height: 14),
                 DriverNavigationCard(
@@ -477,28 +500,6 @@ class _DriverDeliveryNavigationScreenState
                 ),
                 const SizedBox(height: 14),
                 _GetinSupportCard(onPressed: _openSupport),
-                const SizedBox(height: 14),
-                if (!_timeline.currentState.isProblemState) ...[
-                  _CustomerArrivalCard(
-                    state: _timeline.currentState,
-                    onArrived: _timeline.currentState ==
-                            DriverDeliveryState.outForDelivery
-                        ? _markArrivedAtCustomer
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                ],
-                if (_timeline.currentState.isProblemState)
-                  _DeliveryStateLockedNotice(state: _timeline.currentState)
-                else
-                  DriverDeliveryVerificationCard(
-                    receipt: _deliveryVerification,
-                    enabled: _customerArrivalConfirmed,
-                    lockedMessage:
-                        'Arrive at the customer first. Verification stays locked until the arrival state is confirmed.',
-                    onVerifyPin: _openDeliveryPinVerification,
-                    onVerifyQr: _openDeliveryQrVerification,
-                  ),
                 const SizedBox(height: 14),
                 DriverDeliveryExceptionCard(
                   delivery: widget.delivery,
@@ -561,6 +562,16 @@ class _CustomerArrivalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'NEXT STEP',
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Icon(

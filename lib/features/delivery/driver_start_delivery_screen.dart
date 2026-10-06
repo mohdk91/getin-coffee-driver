@@ -89,15 +89,6 @@ class _DriverStartDeliveryScreenState extends State<DriverStartDeliveryScreen> {
                   started: _receipt != null,
                 ),
                 const SizedBox(height: 14),
-                if (_isDemo) ...[
-                  const _DemoStartNotice(),
-                  const SizedBox(height: 14),
-                ],
-                _ReadinessCard(
-                  branchName: widget.route.branchName,
-                  destinationArea: widget.delivery.destinationArea,
-                ),
-                const SizedBox(height: 14),
                 if (_errorMessage != null) ...[
                   _StartErrorCard(message: _errorMessage!),
                   const SizedBox(height: 14),
@@ -109,6 +100,15 @@ class _DriverStartDeliveryScreenState extends State<DriverStartDeliveryScreen> {
                   )
                 else
                   _StartReceiptCard(receipt: _receipt!),
+                const SizedBox(height: 14),
+                _ReadinessCard(
+                  branchName: widget.route.branchName,
+                  destinationArea: widget.delivery.destinationArea,
+                ),
+                if (_isDemo) ...[
+                  const SizedBox(height: 14),
+                  const _DemoStartNotice(),
+                ],
                 if (_receipt != null) ...[
                   const SizedBox(height: 14),
                   GetinActionButton(
@@ -311,6 +311,16 @@ class _StartActionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'NEXT STEP',
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 7),
           const Text(
             'Start Delivery',
             style: TextStyle(
