@@ -4,6 +4,7 @@ import '../../core/config/app_config.dart';
 import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_state_view.dart';
+import '../../core/widgets/driver_v2_ui.dart';
 import '../commissions/driver_commissions_screen.dart';
 import 'data/driver_earnings_repository.dart';
 import 'domain/driver_earnings_models.dart';
@@ -78,68 +79,30 @@ class _DriverEarningsScreenState extends State<DriverEarningsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(padding, 18, padding, 28),
         children: [
-          const Text(
-            'Earnings',
-            style: TextStyle(
-              color: AppColors.greenDark,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-            ),
+          const DriverSectionHeading(
+            title: 'Earnings',
+            subtitle:
+                'Track what you earned, what boosted it and every completed delivery.',
           ),
-          const SizedBox(height: 5),
-          const Text(
-            'See what each completed delivery earned and how the total was built.',
-            style: TextStyle(
-              color: AppColors.muted,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              height: 1.4,
-            ),
-          ),
-          if (_repository.source == DriverEarningsDataSource.demo) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'DEMO EARNINGS • Laravel payout rules are not connected',
-              style: TextStyle(
-                color: AppColors.warning,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _PeriodSelector(
             selected: _period,
             onSelected: _changePeriod,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           _TotalCard(snapshot: snapshot),
           const SizedBox(height: 12),
-          _BreakdownSummary(snapshot: snapshot),
-          const SizedBox(height: 12),
           _CommissionPolicyEntry(config: widget.config),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Delivery earnings',
-                  style: TextStyle(
-                    color: AppColors.greenDark,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                '${snapshot.deliveryCount} deliveries',
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          _EarningsTrendCard(snapshot: snapshot),
+          const SizedBox(height: 12),
+          _BreakdownSummary(snapshot: snapshot),
+          const SizedBox(height: 20),
+          DriverSectionHeading(
+            title: 'Delivery earnings',
+            subtitle: snapshot.deliveryCount == 1
+                ? '1 completed delivery in this period.'
+                : '${snapshot.deliveryCount} completed deliveries in this period.',
           ),
           const SizedBox(height: 10),
           if (snapshot.deliveries.isEmpty)
@@ -219,8 +182,12 @@ class _TotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final average = snapshot.deliveryCount == 0
+        ? 0.0
+        : snapshot.totalEarnings / snapshot.deliveryCount;
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.greenDark,
         borderRadius: BorderRadius.circular(22),
@@ -228,31 +195,247 @@ class _TotalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${snapshot.period.label} earnings',
-            style: const TextStyle(
-              color: AppColors.beige,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${snapshot.period.label} earnings',
+                  style: const TextStyle(
+                    color: AppColors.beige,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.white.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: AppColors.beige,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 5),
           Text(
             '${snapshot.currencyCode} ${snapshot.totalEarnings.toStringAsFixed(2)}',
             style: const TextStyle(
               color: AppColors.white,
-              fontSize: 30,
+              fontSize: 31,
               fontWeight: FontWeight.w900,
               height: 1,
+              letterSpacing: -.5,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 9),
           Text(
             '${snapshot.deliveryCount} completed deliveries',
+            style: TextStyle(
+              color: AppColors.white.withOpacity(.72),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroMetric(
+                  label: 'Avg. / delivery',
+                  value:
+                      '${snapshot.currencyCode} ${average.toStringAsFixed(2)}',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroMetric(
+                  label: 'Bonuses + tips',
+                  value:
+                      '${snapshot.currencyCode} ${(snapshot.distanceBonusTotal + snapshot.peakBonusTotal + snapshot.tipTotal).toStringAsFixed(2)}',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _HeroMetric({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.white.withOpacity(.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.white.withOpacity(.58),
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EarningsTrendCard extends StatelessWidget {
+  final DriverEarningsSnapshot snapshot;
+
+  const _EarningsTrendCard({required this.snapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    final recent =
+        snapshot.deliveries.reversed.take(7).toList().reversed.toList();
+    final maxValue = recent.fold<double>(
+      0,
+      (current, item) =>
+          item.totalEarning > current ? item.totalEarning : current,
+    );
+
+    return DriverSurfaceCard(
+      padding: const EdgeInsets.fromLTRB(15, 15, 15, 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Earnings activity',
+                  style: TextStyle(
+                    color: AppColors.greenDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.cream,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  snapshot.period.label,
+                  style: const TextStyle(
+                    color: AppColors.green,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          if (recent.isEmpty)
+            const SizedBox(
+              height: 72,
+              child: Center(
+                child: Text(
+                  'Complete a delivery to start your earnings trend.',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 86,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: recent.map((item) {
+                  final ratio = maxValue <= 0
+                      ? .12
+                      : (item.totalEarning / maxValue)
+                          .clamp(.12, 1.0)
+                          .toDouble();
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Tooltip(
+                        message:
+                            '${item.orderNumber} • ${item.currencyCode} ${item.totalEarning.toStringAsFixed(2)}',
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: ratio,
+                                  widthFactor: .72,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.green,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              item.deliveredAt.day.toString(),
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            'Average ${snapshot.currencyCode} ${snapshot.deliveryCount == 0 ? '0.00' : (snapshot.totalEarnings / snapshot.deliveryCount).toStringAsFixed(2)} per delivery',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
