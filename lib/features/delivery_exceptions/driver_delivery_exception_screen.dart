@@ -78,9 +78,10 @@ class _DriverDeliveryExceptionScreenState
 
     final existing = _existingReceipt;
     final typedNote = _noteController.text.trim();
-    final note = typedNote.isEmpty && (existing?.note.trim().isNotEmpty ?? false)
-        ? existing!.note
-        : typedNote;
+    final note =
+        typedNote.isEmpty && (existing?.note.trim().isNotEmpty ?? false)
+            ? existing!.note
+            : typedNote;
 
     final result = await _repository.reportException(
       apiOrderId: widget.delivery.apiOrderId,
@@ -120,9 +121,19 @@ class _DriverDeliveryExceptionScreenState
                   isDemo: _repository.source ==
                       DriverDeliveryExceptionDataSource.demo),
               const SizedBox(height: 16),
+              const Text(
+                'NEXT STEP',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                ),
+              ),
+              const SizedBox(height: 7),
               Text(
                 _isEditing ? 'Update delivery issue' : 'What happened?',
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.greenDark,
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
@@ -273,8 +284,8 @@ class _SafetyNotice extends StatelessWidget {
           Expanded(
             child: Text(
               isDemo
-                  ? 'Development mode: exception reports are stored locally only. Laravel and operations are not updated.'
-                  : 'The order must remain unchanged until Getin acknowledges the exception.',
+                  ? 'Test mode: this issue stays in the test session and does not change the live order.'
+                  : 'Keep the delivery open until Getin confirms the next action.',
               style: const TextStyle(
                 color: AppColors.warning,
                 fontSize: 11,
@@ -429,7 +440,7 @@ class _ExceptionReceipt extends StatelessWidget {
             ),
             child: Text(
               receipt.reason == DriverDeliveryExceptionReason.returnToBranch
-                  ? 'Return to branch is the recommended next action. Task #24 will formalize the delivery state transition.'
+                  ? 'Return to branch is the recommended next action. Keep this delivery open until the return is confirmed.'
                   : 'The order is not Delivered. Keep the active delivery open until Getin operations resolves the exception.',
               style: const TextStyle(
                 color: AppColors.warning,
