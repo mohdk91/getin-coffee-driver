@@ -6,17 +6,21 @@ import '../../core/config/app_config.dart';
 import '../../core/storage/onboarding_preference_store.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/getin_logo.dart';
+import '../auth/auth_navigation.dart';
+import '../auth/data/driver_session_bootstrap_repository.dart';
 import '../auth/driver_login_screen.dart';
 import '../onboarding/driver_onboarding_screen.dart';
 
 class DriverSplashScreen extends StatefulWidget {
   final AppConfig config;
   final OnboardingCompletionStore completionStore;
+  final DriverSessionBootstrapRepository? sessionBootstrapRepository;
 
   const DriverSplashScreen({
     super.key,
     required this.config,
     this.completionStore = const SharedPreferencesOnboardingCompletionStore(),
+    this.sessionBootstrapRepository,
   });
 
   @override
@@ -64,12 +68,26 @@ class _DriverSplashScreenState extends State<DriverSplashScreen>
       completed: completed,
     );
 
-    final destination = showOnboarding
-        ? DriverOnboardingScreen(
-            config: widget.config,
-            completionStore: widget.completionStore,
-          )
-        : DriverLoginScreen(config: widget.config);
+    Widget destination;
+    if (showOnboarding) {
+      destination = DriverOnboardingScreen(
+        config: widget.config,
+        completionStore: widget.completionStore,
+      );
+    } else {
+      final signInBuilder = (_) => DriverLoginScreen(config: widget.config);
+      final bootstrap = widget.sessionBootstrapRepository ??
+          DriverSessionBootstrapRepositoryFactory.create(widget.config);
+      final restored = await bootstrap.restore();
+      if (!mounted || _navigated == false) return;
+      destination = restored.isAuthenticated
+          ? driverDestinationAfterAuthentication(
+              config: widget.config,
+              account: restored.account!,
+              signInBuilder: signInBuilder,
+            )
+          : DriverLoginScreen(config: widget.config);
+    }
 
     await Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(

@@ -7,13 +7,12 @@ import '../verification/driver_verification_status_screen.dart';
 import 'domain/driver_auth_models.dart';
 import 'driver_account_state_screen.dart';
 
-Future<void> navigateAfterDriverAuthentication({
-  required BuildContext context,
+Widget driverDestinationAfterAuthentication({
   required AppConfig config,
   required DriverAuthenticatedAccount account,
   required WidgetBuilder signInBuilder,
-}) async {
-  final destination = account.accessState == DriverAccessState.disabled
+}) {
+  return account.accessState == DriverAccessState.disabled
       ? DriverAccountStateScreen(
           config: config,
           account: account,
@@ -25,6 +24,19 @@ Future<void> navigateAfterDriverAuthentication({
           repository: DriverVerificationRepositoryFactory.create(config),
           signInBuilder: signInBuilder,
         );
+}
+
+Future<void> navigateAfterDriverAuthentication({
+  required BuildContext context,
+  required AppConfig config,
+  required DriverAuthenticatedAccount account,
+  required WidgetBuilder signInBuilder,
+}) async {
+  final destination = driverDestinationAfterAuthentication(
+    config: config,
+    account: account,
+    signInBuilder: signInBuilder,
+  );
 
   await Navigator.of(context).pushAndRemoveUntil(
     MaterialPageRoute<void>(builder: (_) => destination),
