@@ -297,7 +297,17 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
               const SizedBox(height: 14),
               _PickupSummary(route: route, state: _timeline.currentState),
               const SizedBox(height: 14),
-              _RouteMapPreview(route: route),
+              _BranchArrivalAction(
+                alreadyPickedUp: _pickupReceivedLocally ||
+                    _timeline.currentState == DriverDeliveryState.pickedUp ||
+                    _timeline.currentState ==
+                        DriverDeliveryState.outForDelivery,
+                deliveryStarted: _deliveryStartedLocally ||
+                    _timeline.currentState ==
+                        DriverDeliveryState.outForDelivery,
+                onArrived: _openPickupVerification,
+                onStartDelivery: _openStartDelivery,
+              ),
               const SizedBox(height: 14),
               DriverNavigationCard(
                 target: DriverNavigationTarget(
@@ -312,7 +322,12 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
               const SizedBox(height: 14),
               _RouteMetrics(route: route),
               const SizedBox(height: 14),
-              DriverActiveDeliveryTimelineCard(timeline: _timeline),
+              _RouteMapPreview(route: route),
+              const SizedBox(height: 14),
+              DriverActiveDeliveryTimelineCard(
+                timeline: _timeline,
+                initiallyExpanded: false,
+              ),
               const SizedBox(height: 14),
               _BranchActions(
                 onCallBranch: _callBranch,
@@ -322,18 +337,6 @@ class _DriverRouteToBranchScreenState extends State<DriverRouteToBranchScreen> {
               _PickupInstructions(instructions: route.pickupInstructions),
               const SizedBox(height: 14),
               _OrderContentsEntry(onOpen: _openOrderContents),
-              const SizedBox(height: 14),
-              _BranchArrivalAction(
-                alreadyPickedUp: _pickupReceivedLocally ||
-                    _timeline.currentState == DriverDeliveryState.pickedUp ||
-                    _timeline.currentState ==
-                        DriverDeliveryState.outForDelivery,
-                deliveryStarted: _deliveryStartedLocally ||
-                    _timeline.currentState ==
-                        DriverDeliveryState.outForDelivery,
-                onArrived: _openPickupVerification,
-                onStartDelivery: _openStartDelivery,
-              ),
             ],
           ),
         ),
@@ -1002,6 +1005,16 @@ class _BranchArrivalAction extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'NEXT STEP',
+              style: TextStyle(
+                color: AppColors.gold,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
+            ),
+            const SizedBox(height: 8),
             const Row(
               children: [
                 Icon(Icons.check_circle_outline_rounded,
@@ -1050,6 +1063,16 @@ class _BranchArrivalAction extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'NEXT STEP',
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 8),
           const Row(
             children: [
               Icon(Icons.store_mall_directory_outlined,
