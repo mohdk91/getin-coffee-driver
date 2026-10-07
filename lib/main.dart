@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/push/driver_push_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(GetinDriverApp(config: AppConfig.fromEnvironment()));
+  final config = AppConfig.fromEnvironment();
+  await DriverPushService.instance.initialize(config);
+  runApp(GetinDriverApp(config: config));
 }

@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "269000261298",
+    "project_id": "getin-coffee",
+    "storage_bucket": "getin-coffee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:269000261298:android:5f9bb8a17c03a23ff613ab",
+        "android_client_info": {
+          "package_name": "com.getincoffee.driver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "269000261298-kv1ma0q7cbgqc58si50vf2r1385lsalu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABn9Gt0G8WVnczVYREBKG7guC_49kKc5o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "269000261298-kv1ma0q7cbgqc58si50vf2r1385lsalu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "269000261298-dl9ubqksj3ta6g933tftl5tutghfle82.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.getincoffee.getinCoffee"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:269000261298:android:29602ce1fc40c741f613ab",
+        "android_client_info": {
+          "package_name": "com.getincoffee.getin_coffee"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "269000261298-o99divgp0uhuldgi6uhcp9a51pbjnckg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.getincoffee.getin_coffee",
+            "certificate_hash": "32846e581dc19dd87c3f4f30f1f8dbc6030d77da"
+          }
+        },
+        {
+          "client_id": "269000261298-kv1ma0q7cbgqc58si50vf2r1385lsalu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABn9Gt0G8WVnczVYREBKG7guC_49kKc5o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "269000261298-kv1ma0q7cbgqc58si50vf2r1385lsalu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "269000261298-dl9ubqksj3ta6g933tftl5tutghfle82.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.getincoffee.getinCoffee"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

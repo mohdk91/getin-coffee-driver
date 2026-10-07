@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>269000261298-ts0b0pj993tqec1u7f5s88utr8v16qqu.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.269000261298-ts0b0pj993tqec1u7f5s88utr8v16qqu</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>269000261298-o99divgp0uhuldgi6uhcp9a51pbjnckg.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCeZ2vr3APBL_zfhm4x7MkW6dN8ZyP13pU</string>
+	<key>GCM_SENDER_ID</key>
+	<string>269000261298</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.getincoffee.driver</string>
+	<key>PROJECT_ID</key>
+	<string>getin-coffee</string>
+	<key>STORAGE_BUCKET</key>
+	<string>getin-coffee.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:269000261298:ios:7999bfa07a6e2e8ff613ab</string>
+</dict>
+</plist>

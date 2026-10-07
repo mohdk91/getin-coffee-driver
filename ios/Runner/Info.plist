@@ -51,6 +51,8 @@
 	<string>Getin Driver needs background location access so active delivery tracking can continue when the app is not in front.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
 		<string>location</string>
 	</array>
 </dict>
