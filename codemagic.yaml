@@ -1,0 +1,135 @@
+workflows:
+  ios-testflight:
+    name: GETIN Driver - iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+
+    environment:
+      groups:
+        - appstore_credentials
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.getincoffee.driver
+      vars:
+        BUNDLE_ID: com.getincoffee.driver
+        APP_ENV: prod
+        API_BASE_URL: https://portal.getincoffee.com/api
+        API_TIMEOUT_SECONDS: "20"
+      flutter: 3.22.3
+      xcode: 26.4
+      cocoapods: default
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    scripts:
+      - name: Verify iOS identifiers
+        script: |
+          set -e
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.getincoffee.driver;' ios/Runner.xcodeproj/project.pbxproj
+          test -f ios/Runner/GoogleService-Info.plist
+          grep -A1 '<key>BUNDLE_ID</key>' ios/Runner/GoogleService-Info.plist | grep -q 'com.getincoffee.driver'
+          echo "Bundle identifier verification: PASS"
+
+      - name: Configure CocoaPods compatibility
+        script: |
+          set -e
+          flutter config --no-enable-swift-package-manager
+          flutter clean
+          flutter pub get
+
+      - name: Flutter analyze
+        script: |
+          set -e
+          flutter --version
+          dart --version
+          flutter analyze --no-fatal-infos
+
+      - name: Flutter tests
+        script: |
+          set -e
+          flutter test
+
+      - name: Install CocoaPods
+        script: |
+          set -e
+          cd ios
+          rm -f Podfile.lock
+          pod install --repo-update
+          cd ..
+
+      - name: Apply provisioning profiles
+        script: |
+          set -e
+          xcode-project use-profiles
+
+      - name: Build signed IPA
+        script: |
+          set -e
+
+          if [ -z "${APP_STORE_APPLE_ID:-}" ]; then
+            echo "APP_STORE_APPLE_ID is missing from appstore_credentials."
+            exit 1
+          fi
+
+          ASC_BUILD_LOG="/tmp/getin-driver-asc-build-number.log"
+          : > "$ASC_BUILD_LOG"
+
+          LATEST_BUILD_NUMBER="$(
+            app-store-connect get-latest-testflight-build-number               "$APP_STORE_APPLE_ID"               2>>"$ASC_BUILD_LOG" || true
+          )"
+
+          case "$LATEST_BUILD_NUMBER" in
+            ''|*[!0-9]*)
+              LATEST_BUILD_NUMBER="$(
+                app-store-connect get-latest-app-store-build-number                   "$APP_STORE_APPLE_ID"                   --app-store-version=1.0.0                   --platform=IOS                   2>>"$ASC_BUILD_LOG" || true
+              )"
+              ;;
+          esac
+
+          STORE_NEXT=0
+          case "$LATEST_BUILD_NUMBER" in
+            ''|*[!0-9]*) ;;
+            *) STORE_NEXT=$((LATEST_BUILD_NUMBER + 1)) ;;
+          esac
+
+          CM_COUNTER="${PROJECT_BUILD_NUMBER:-${BUILD_NUMBER:-0}}"
+          case "$CM_COUNTER" in
+            ''|*[!0-9]*) CM_COUNTER=0 ;;
+          esac
+
+          if [ "$STORE_NEXT" -gt "$CM_COUNTER" ]; then
+            NEXT_BUILD_NUMBER="$STORE_NEXT"
+          else
+            NEXT_BUILD_NUMBER="$CM_COUNTER"
+          fi
+
+          if [ "$NEXT_BUILD_NUMBER" -lt 1 ]; then
+            NEXT_BUILD_NUMBER=1
+          fi
+
+          BUILD_NUMBER="$NEXT_BUILD_NUMBER"
+
+          echo "Latest App Store/TestFlight build: ${LATEST_BUILD_NUMBER:-unavailable}"
+          echo "Codemagic counter: $CM_COUNTER"
+          echo "Resolved iOS build number: $BUILD_NUMBER"
+
+          if [ -s "$ASC_BUILD_LOG" ]; then
+            cat "$ASC_BUILD_LOG"
+          fi
+
+          flutter build ipa --release             --build-name=1.0.0             --build-number="$BUILD_NUMBER"             --dart-define=APP_ENV="$APP_ENV"             --dart-define=API_BASE_URL="$API_BASE_URL"             --dart-define=API_TIMEOUT_SECONDS="$API_TIMEOUT_SECONDS"             --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: false
+        submit_to_app_store: false
