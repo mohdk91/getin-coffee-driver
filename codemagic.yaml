@@ -6,15 +6,18 @@ workflows:
 
     environment:
       groups:
-        - appstore_credentials
+        - appstore_driver_credentials
+
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.getincoffee.driver
+
       vars:
         BUNDLE_ID: com.getincoffee.driver
         APP_ENV: prod
         API_BASE_URL: https://portal.getincoffee.com/api
         API_TIMEOUT_SECONDS: "20"
+
       flutter: 3.22.3
       xcode: 26.4
       cocoapods: default
@@ -28,9 +31,13 @@ workflows:
       - name: Verify iOS identifiers
         script: |
           set -e
-          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.getincoffee.driver;' ios/Runner.xcodeproj/project.pbxproj
+
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.getincoffee.driver;'             ios/Runner.xcodeproj/project.pbxproj
+
           test -f ios/Runner/GoogleService-Info.plist
-          grep -A1 '<key>BUNDLE_ID</key>' ios/Runner/GoogleService-Info.plist | grep -q 'com.getincoffee.driver'
+
+          grep -A1 '<key>BUNDLE_ID</key>'             ios/Runner/GoogleService-Info.plist             | grep -q 'com.getincoffee.driver'
+
           echo "Bundle identifier verification: PASS"
 
       - name: Configure CocoaPods compatibility
@@ -70,7 +77,7 @@ workflows:
           set -e
 
           if [ -z "${APP_STORE_APPLE_ID:-}" ]; then
-            echo "APP_STORE_APPLE_ID is missing from appstore_credentials."
+            echo "APP_STORE_APPLE_ID is missing from appstore_driver_credentials."
             exit 1
           fi
 
@@ -117,6 +124,7 @@ workflows:
           echo "Resolved iOS build number: $BUILD_NUMBER"
 
           if [ -s "$ASC_BUILD_LOG" ]; then
+            echo "App Store Connect lookup diagnostics:"
             cat "$ASC_BUILD_LOG"
           fi
 
