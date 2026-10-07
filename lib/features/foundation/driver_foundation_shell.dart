@@ -7,6 +7,8 @@ import '../../core/data/driver_api_context.dart';
 import '../../core/navigation/driver_navigation_push_guard.dart';
 import '../../core/navigation/driver_tab.dart';
 import '../../core/offline/driver_offline_safety.dart';
+import '../../core/push/driver_push_coordinator.dart';
+import '../../core/push/driver_push_models.dart';
 import '../../core/uat/driver_uat_completed_delivery_store.dart';
 import '../../core/uat/driver_uat_pin_lockout_store.dart';
 import '../../core/widgets/app_state_view.dart';
@@ -38,6 +40,7 @@ import '../navigation/driver_delivery_navigation_screen.dart';
 import '../notifications/data/driver_notifications_repository.dart';
 import '../notifications/driver_notifications_screen.dart';
 import '../orders/data/driver_order_acceptance_repository.dart';
+import '../orders/data/driver_order_offer_response_repository.dart';
 import '../orders/domain/driver_order_acceptance_models.dart';
 import '../order_history/driver_order_history_screen.dart';
 import '../pickup/data/driver_branch_pickup_repository.dart';
@@ -61,6 +64,7 @@ class DriverFoundationShell extends StatefulWidget {
   final DriverLocationRepository? locationRepository;
   final DriverOrderEligibilityRepository? eligibilityRepository;
   final DriverOrderAcceptanceRepository? acceptanceRepository;
+  final DriverOrderOfferResponseRepository? offerResponseRepository;
   final DriverBranchRouteRepository? routeRepository;
   final DriverBranchPickupRepository? pickupRepository;
   final DriverStartDeliveryRepository? startDeliveryRepository;
@@ -72,6 +76,7 @@ class DriverFoundationShell extends StatefulWidget {
   final DriverProfileRepository? profileRepository;
   final DriverBackgroundLocationController? backgroundLocationController;
   final DriverRuntimeRecoveryStore? recoveryStore;
+  final DriverPushCoordinator? pushCoordinator;
 
   const DriverFoundationShell({
     super.key,
@@ -81,6 +86,7 @@ class DriverFoundationShell extends StatefulWidget {
     this.locationRepository,
     this.eligibilityRepository,
     this.acceptanceRepository,
+    this.offerResponseRepository,
     this.routeRepository,
     this.pickupRepository,
     this.startDeliveryRepository,
@@ -92,6 +98,7 @@ class DriverFoundationShell extends StatefulWidget {
     this.profileRepository,
     this.backgroundLocationController,
     this.recoveryStore,
+    this.pushCoordinator,
   });
 
   @override
@@ -118,6 +125,10 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       const SharedPreferencesDriverUatCompletedDeliveryStore();
   final DriverUatPinLockoutStore _uatPinLockoutStore =
       SharedPreferencesDriverUatPinLockoutStore();
+  StreamSubscription<DriverPushIntent>? _pushSubscription;
+
+  late final DriverPushCoordinator _pushCoordinator =
+      widget.pushCoordinator ?? DriverPushCoordinator.instance;
 
   late final DriverRuntimeRecoveryStore _recoveryStore =
       widget.recoveryStore ?? SharedPreferencesDriverRuntimeRecoveryStore();
@@ -143,6 +154,9 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   late final DriverOrderAcceptanceRepository _acceptanceRepository =
       widget.acceptanceRepository ??
           DriverOrderAcceptanceRepositoryFactory.create(widget.config);
+  late final DriverOrderOfferResponseRepository _offerResponseRepository =
+      widget.offerResponseRepository ??
+          DriverOrderOfferResponseRepositoryFactory.create(widget.config);
   late final DriverBranchRouteRepository _routeRepository =
       widget.routeRepository ??
           DriverBranchRouteRepositoryFactory.create(widget.config);
@@ -166,6 +180,14 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _pushSubscription = _pushCoordinator.stream.listen(
+      (intent) => unawaited(_handlePushIntent(intent)),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final intent in _pushCoordinator.takePending()) {
+        unawaited(_handlePushIntent(intent));
+      }
+    });
     unawaited(_restoreRuntimeState());
   }
 
@@ -181,6 +203,7 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_pushSubscription?.cancel());
     if (_ownsBackgroundLocationController) {
       _backgroundLocationController.dispose();
     }
@@ -661,6 +684,161 @@ class _DriverFoundationShellState extends State<DriverFoundationShell>
       allowedVehicleTypes: const <String>['motorcycle', 'car'],
       isAvailable: true,
     );
+  }
+
+  Future<void> _handlePushIntent(DriverPushIntent intent) async {
+    if (!mounted) return;
+
+    setState(() {
+      _homeReloadToken += 1;
+      if (intent.isOrderOffer) {
+        _tab = DriverTab.orders;
+      }
+    });
+
+    if (!intent.isOrderOffer) {
+      _showIncomingOrderMessage(intent.displayMessage);
+      return;
+    }
+
+    await _showProductionIncomingOffer(intent);
+  }
+
+  Future<DriverHomeSnapshot?> _waitForHomeSnapshot() async {
+    for (var attempt = 0; attempt < 5; attempt += 1) {
+      final snapshot = _homeSnapshot;
+      if (snapshot != null) return snapshot;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return null;
+    }
+    return _homeSnapshot;
+  }
+
+  Future<void> _showProductionIncomingOffer(DriverPushIntent intent) async {
+    if (!mounted || _incomingOfferVisible || widget.config.allowsDemo) {
+      return;
+    }
+
+    final capacity = _incomingOrderCapacity;
+    if (!capacity.canReceiveOffer) {
+      await _showIncomingOrderCapacityBlockedDialog(capacity);
+      return;
+    }
+
+    final snapshot = await _waitForHomeSnapshot();
+    if (!mounted) return;
+    if (snapshot == null || _isOffline) {
+      _showIncomingOrderMessage(
+        'A new delivery is available. Reconnect and open Orders to refresh it.',
+      );
+      return;
+    }
+
+    setState(() => _incomingOfferVisible = true);
+    final evaluated = await _eligibilityRepository.evaluate(
+      availability: snapshot.availability,
+      activeOrderCount: _hasRunningActiveDelivery ? 1 : 0,
+      driverApproved: true,
+    );
+    if (!mounted) return;
+
+    DriverOrderCandidate? order;
+    final decisions = evaluated.snapshot?.decisions ??
+        const <DriverOrderEligibilityDecision>[];
+    for (final decision in decisions) {
+      final candidate = decision.order;
+      final sameOffer = intent.offerId != null &&
+          candidate.apiOfferId != null &&
+          candidate.apiOfferId == intent.offerId;
+      final sameOrder = intent.orderId != null &&
+          candidate.apiOrderId != null &&
+          candidate.apiOrderId == intent.orderId;
+      final sameNumber = intent.orderNumber != null &&
+          candidate.orderNumber == intent.orderNumber;
+      if (sameOffer || sameOrder || sameNumber) {
+        order = candidate;
+        break;
+      }
+    }
+
+    if (order == null) {
+      setState(() => _incomingOfferVisible = false);
+      _showIncomingOrderMessage(
+        evaluated.errorMessage ??
+            'This delivery offer is no longer available. Orders were refreshed.',
+      );
+      return;
+    }
+
+    var duration = const Duration(seconds: 25);
+    final expiresAt = intent.expiresAt;
+    if (expiresAt != null) {
+      final remaining = expiresAt.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        setState(() => _incomingOfferVisible = false);
+        _showIncomingOrderMessage('This delivery offer has expired.');
+        return;
+      }
+      duration = remaining > const Duration(seconds: 45)
+          ? const Duration(seconds: 45)
+          : remaining;
+    }
+
+    final decision = await showDriverIncomingOrderOfferDialog(
+      context: context,
+      order: order,
+      offerDuration: duration,
+      uatDemo: false,
+    );
+
+    if (!mounted) return;
+    setState(() => _incomingOfferVisible = false);
+
+    if (decision == null) return;
+    if (decision == DriverIncomingOfferDecision.expired) {
+      setState(() => _homeReloadToken += 1);
+      _showIncomingOrderMessage('This delivery offer has expired.');
+      return;
+    }
+
+    if (decision == DriverIncomingOfferDecision.decline) {
+      final offerId = order.apiOfferId ?? intent.offerId;
+      if (offerId == null) {
+        _showIncomingOrderMessage(
+          'The offer could not be declined safely. Open Orders and refresh.',
+        );
+        return;
+      }
+      final result = await _offerResponseRepository.reject(offerId);
+      if (!mounted) return;
+      setState(() => _homeReloadToken += 1);
+      _showIncomingOrderMessage(result.message);
+      return;
+    }
+
+    final acceptanceCapacity = _incomingOrderCapacity;
+    if (!acceptanceCapacity.canReceiveOffer) {
+      _showIncomingOrderMessage(acceptanceCapacity.blockedMessage);
+      return;
+    }
+    if (!driverCriticalActionAllowed(_criticalActionGate)) {
+      _showIncomingOrderMessage(
+        DriverCriticalAction.acceptOrder.offlineMessage,
+      );
+      return;
+    }
+
+    final result = await _acceptanceRepository.accept(
+      order: order,
+      driverId: 'authenticated-driver',
+    );
+    if (!mounted) return;
+    if (result.isAccepted) {
+      _handleOrderAccepted(DriverAcceptedOrder(order: order, result: result));
+    } else {
+      setState(() => _homeReloadToken += 1);
+    }
+    _showIncomingOrderMessage(result.message);
   }
 
   Future<void> _showIncomingOrderUatScenario(
