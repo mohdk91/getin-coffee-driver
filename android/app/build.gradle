@@ -79,3 +79,13 @@ android {
 flutter {
     source = "../.."
 }
+
+// Task 288R: The current project intentionally remains on Dart 3.4.4 and
+// FlutterFire firebase_core 4.7.0 / firebase_messaging 16.2.0. Newer
+// FlutterFire releases require Dart >=3.6.0, so consume the compatible native
+// Android FCM registration fixes without broadening the Flutter SDK upgrade
+// surface during the Driver release gate.
+dependencies {
+    implementation "com.google.firebase:firebase-messaging:25.1.3"
+    implementation "com.google.firebase:firebase-installations:19.1.2"
+}
