@@ -33,8 +33,6 @@ void main() {
       ),
     );
 
-    expect(find.text('GETIN DRIVER'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 1300));
     await tester.pumpAndSettle();
 
     expect(find.text('Drive with Getin'), findsOneWidget);
@@ -55,7 +53,6 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(milliseconds: 1300));
     await tester.pumpAndSettle();
 
     expect(find.text('Driver Login'), findsOneWidget);

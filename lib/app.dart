@@ -7,6 +7,7 @@ import 'core/system/mobile_system_config_repository.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/mobile_startup_gate.dart';
 import 'features/splash/driver_splash_screen.dart';
+import 'features/splash/driver_video_splash.dart';
 
 class GetinDriverApp extends StatelessWidget {
   final AppConfig config;
@@ -30,6 +31,8 @@ class GetinDriverApp extends StatelessWidget {
         loader: config.isApiConfigured
             ? MobileSystemConfigRepository(ApiClient(config))
             : null,
+        loadingChild: const DriverVideoSplash(),
+        minimumLoadingDuration: const Duration(milliseconds: 3050),
         child: DriverSplashScreen(config: config),
       ),
     );

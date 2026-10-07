@@ -20,6 +20,7 @@ dependencies:
   geolocator: 13.0.2
   firebase_core: 4.7.0
   firebase_messaging: 16.2.0
+  video_player: 2.9.5
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +33,5 @@ flutter:
     - assets/images/getin_logo_mark.png
     - assets/images/onboarding/
     - assets/images/branches/
+    - assets/images/splash/
+    - assets/video/

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -35,6 +37,8 @@ class MobileStartupGate extends StatefulWidget {
   final Widget child;
   final MobileSystemConfigLoader? loader;
   final AppRuntimeInfoProvider runtimeInfoProvider;
+  final Widget? loadingChild;
+  final Duration minimumLoadingDuration;
 
   const MobileStartupGate({
     super.key,
@@ -43,6 +47,8 @@ class MobileStartupGate extends StatefulWidget {
     required this.child,
     this.loader,
     this.runtimeInfoProvider = const PackageAppRuntimeInfoProvider(),
+    this.loadingChild,
+    this.minimumLoadingDuration = Duration.zero,
   });
 
   @override
@@ -53,15 +59,27 @@ class _MobileStartupGateState extends State<MobileStartupGate> {
   MobileSystemConfig? _systemConfig;
   Object? _error;
   bool _loading = true;
+  final Stopwatch _loadingStopwatch = Stopwatch();
 
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
+  }
+
+  Future<void> _waitForMinimumLoadingDuration() async {
+    final remaining = widget.minimumLoadingDuration - _loadingStopwatch.elapsed;
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
+    }
   }
 
   Future<void> _load() async {
+    _loadingStopwatch
+      ..reset()
+      ..start();
     if (!widget.appConfig.isApiConfigured) {
+      await _waitForMinimumLoadingDuration();
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -90,12 +108,14 @@ class _MobileStartupGateState extends State<MobileStartupGate> {
         version: runtime.version,
       );
 
+      await _waitForMinimumLoadingDuration();
       if (!mounted) return;
       setState(() {
         _systemConfig = config;
         _loading = false;
       });
     } catch (error) {
+      await _waitForMinimumLoadingDuration();
       if (!mounted) return;
       setState(() {
         _error = error;
@@ -107,6 +127,8 @@ class _MobileStartupGateState extends State<MobileStartupGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
+      final loadingChild = widget.loadingChild;
+      if (loadingChild != null) return loadingChild;
       return const _StartupShell(
         child: CircularProgressIndicator(),
       );
