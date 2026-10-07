@@ -40,10 +40,9 @@ workflows:
 
           echo "Bundle identifier verification: PASS"
 
-      - name: Configure CocoaPods compatibility
+      - name: Prepare Flutter dependencies
         script: |
           set -e
-          flutter config --no-enable-swift-package-manager
           flutter clean
           flutter pub get
 
