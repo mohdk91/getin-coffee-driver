@@ -26,8 +26,20 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Getin Driver needs background location access so active delivery tracking can continue when the app is not in front.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Getin Driver uses your location to verify pickup and delivery progress, route position, and order eligibility.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GETIN Driver uses your photo library to let you select driver documents and delivery-related images for upload.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -44,16 +56,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Getin Driver uses your location to verify pickup and delivery progress, route position, and order eligibility.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Getin Driver needs background location access so active delivery tracking can continue when the app is not in front.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>remote-notification</string>
-		<string>location</string>
 	</array>
 </dict>
 </plist>
