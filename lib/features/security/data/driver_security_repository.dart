@@ -1,6 +1,7 @@
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/device/driver_device_registrar.dart';
 import '../../../core/storage/driver_token_store.dart';
 import '../../../core/storage/secure_store.dart';
 import '../domain/driver_security_models.dart';
@@ -49,6 +50,7 @@ class ApiDriverSecurityRepository implements DriverSecurityRepository {
   late final DriverSessionsRepository sessions =
       DriverSessionsRepository(context);
   late final DriverTokenStore tokens = DriverTokenStore(context.secureStore);
+  late final DriverDeviceRegistrar devices = DriverDeviceRegistrar(context);
 
   int minPin = 4;
   int maxPin = 6;
@@ -147,10 +149,12 @@ class ApiDriverSecurityRepository implements DriverSecurityRepository {
   @override
   Future<DriverSecurityActionResult> logout() async {
     try {
+      await devices.clearPushTokenBestEffort();
       await sessions.revokeCurrent();
       await tokens.clearAccessToken();
       return const DriverSecurityActionResult.success('Signed out.');
     } on ApiException {
+      await devices.clearPushTokenBestEffort();
       await tokens.clearAccessToken();
       return const DriverSecurityActionResult.success(
         'Signed out on this device. The server session could not be confirmed as revoked, so review Active Sessions after signing in again.',

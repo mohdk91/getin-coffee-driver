@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import '../../../core/config/app_config.dart';
 import '../../../core/data/driver_api_context.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/device/driver_device_registrar.dart';
 import '../../../core/storage/driver_token_store.dart';
 import '../domain/driver_auth_models.dart';
 
@@ -29,9 +32,13 @@ abstract interface class DriverSessionBootstrapRepository {
 class ApiDriverSessionBootstrapRepository
     implements DriverSessionBootstrapRepository {
   final DriverApiContext context;
+  final DriverDeviceRegistrar? deviceRegistrar;
   late final DriverTokenStore _tokens = DriverTokenStore(context.secureStore);
 
-  ApiDriverSessionBootstrapRepository(this.context);
+  ApiDriverSessionBootstrapRepository(
+    this.context, {
+    this.deviceRegistrar,
+  });
 
   @override
   Future<DriverSessionBootstrapResult> restore() async {
@@ -45,6 +52,10 @@ class ApiDriverSessionBootstrapRepository
         authenticated: true,
       );
       final data = DriverApiContext.dataMap(envelope);
+      final registrar = deviceRegistrar;
+      if (registrar != null) {
+        unawaited(registrar.registerBestEffort());
+      }
       return DriverSessionBootstrapResult.authenticated(_map(data));
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
@@ -104,8 +115,10 @@ class DriverSessionBootstrapRepositoryFactory {
     if (!config.isApiConfigured) {
       return const NoopDriverSessionBootstrapRepository();
     }
+    final context = DriverApiContext.create(config);
     return ApiDriverSessionBootstrapRepository(
-      DriverApiContext.create(config),
+      context,
+      deviceRegistrar: DriverDeviceRegistrar(context),
     );
   }
 }
