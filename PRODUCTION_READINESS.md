@@ -46,3 +46,17 @@ A successful Task #40 validation means the current Flutter client passes its loc
 Tasks 278–282 harden production recovery, device readiness, cross-system release checks, UI/security/performance auditing, and the final release gate. The Driver app must not be labeled release-candidate-ready until `tool/release/rc_gate.sh` reports `RC_STATUS=READY`.
 
 The gate blocks release when native Driver push is not configured. Laravel already supports transactional FCM delivery, but the Flutter Driver client still requires `firebase_messaging`, `android/app/google-services.json`, and `ios/Runner/GoogleService-Info.plist` from the real Firebase project. Android release signing and production backend push configuration are also required.
+
+## Native FCM / APNs closure — Tasks 283–286
+
+The Driver client now owns the native push path instead of leaving it as an infrastructure placeholder:
+
+- `firebase_core` and `firebase_messaging` initialize only for API-connected builds, so the local Test Lab does not subscribe to live production push.
+- Android uses the real `com.getincoffee.driver` Firebase client, the Google Services Gradle plugin, and Android 13+ `POST_NOTIFICATIONS` permission.
+- iOS bundles the real `GoogleService-Info.plist`, enables APNs signing entitlement, and declares remote-notification background execution.
+- The authenticated Driver device registration sends the FCM token through `PUT /api/v1/driver/device`; token refreshes are re-synchronized automatically.
+- Logout attempts to clear the server push token before revoking the current session and deletes the local FCM token best-effort.
+- Foreground, background-tap, and terminated-tap notification paths converge into one push coordinator.
+- `order_available` notifications are revalidated against Laravel order offers before Accept or Decline. The push payload never becomes the acceptance authority.
+
+The remaining release operations are external to source code: real Android release signing, Apple/Firebase APNs key configuration, the deployed Laravel FCM credential, a persistent production Laravel queue worker, and a physical-device end-to-end push smoke test.

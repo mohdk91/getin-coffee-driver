@@ -48,22 +48,74 @@ else
   block 'android/key.properties is missing (real Android release signing required)'
 fi
 
-if contains "$DRIVER_ROOT/pubspec.yaml" 'firebase_messaging:'; then
-  pass 'Flutter firebase_messaging dependency is present'
+if contains "$DRIVER_ROOT/pubspec.yaml" 'firebase_core:' \
+  && contains "$DRIVER_ROOT/pubspec.yaml" 'firebase_messaging:'; then
+  pass 'Flutter Firebase Core and Messaging dependencies are present'
 else
-  block 'Flutter Driver native push is not wired (firebase_messaging missing)'
+  block 'Flutter Firebase native push dependencies are incomplete'
 fi
 
-if [ -f "$DRIVER_ROOT/android/app/google-services.json" ]; then
-  pass 'Android Firebase configuration exists'
+if [ -f "$DRIVER_ROOT/android/app/google-services.json" ] \
+  && contains "$DRIVER_ROOT/android/app/google-services.json" 'com.getincoffee.driver' \
+  && contains "$DRIVER_ROOT/android/app/google-services.json" 'getin-coffee'; then
+  pass 'Android Firebase configuration matches GETIN Driver'
 else
-  block 'android/app/google-services.json is missing'
+  block 'Android Firebase configuration is missing or does not match com.getincoffee.driver'
 fi
 
-if [ -f "$DRIVER_ROOT/ios/Runner/GoogleService-Info.plist" ]; then
-  pass 'iOS Firebase configuration exists'
+if contains "$DRIVER_ROOT/android/settings.gradle" 'com.google.gms.google-services' \
+  && contains "$DRIVER_ROOT/android/app/build.gradle" 'com.google.gms.google-services'; then
+  pass 'Android Google Services Gradle plugin is wired'
 else
-  block 'ios/Runner/GoogleService-Info.plist is missing'
+  block 'Android Google Services Gradle plugin is not fully wired'
+fi
+
+if contains "$DRIVER_ROOT/android/app/src/main/AndroidManifest.xml" 'android.permission.POST_NOTIFICATIONS'; then
+  pass 'Android notification runtime permission is declared'
+else
+  block 'Android POST_NOTIFICATIONS permission is missing'
+fi
+
+if [ -f "$DRIVER_ROOT/ios/Runner/GoogleService-Info.plist" ] \
+  && contains "$DRIVER_ROOT/ios/Runner/GoogleService-Info.plist" 'com.getincoffee.driver' \
+  && contains "$DRIVER_ROOT/ios/Runner/GoogleService-Info.plist" 'getin-coffee'; then
+  pass 'iOS Firebase configuration matches GETIN Driver'
+else
+  block 'iOS Firebase configuration is missing or does not match com.getincoffee.driver'
+fi
+
+if contains "$DRIVER_ROOT/ios/Runner/Info.plist" 'remote-notification' \
+  && contains "$DRIVER_ROOT/ios/Runner.xcodeproj/project.pbxproj" 'GoogleService-Info.plist in Resources' \
+  && contains "$DRIVER_ROOT/ios/Runner.xcodeproj/project.pbxproj" 'CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements' \
+  && contains "$DRIVER_ROOT/ios/Runner/Runner.entitlements" 'aps-environment'; then
+  pass 'iOS APNs capability and remote-notification background mode are wired'
+else
+  block 'iOS APNs/native notification project wiring is incomplete'
+fi
+
+if contains "$DRIVER_ROOT/lib/main.dart" 'DriverPushService.instance.initialize' \
+  && contains "$DRIVER_ROOT/lib/core/push/driver_push_service.dart" 'onTokenRefresh.listen' \
+  && contains "$DRIVER_ROOT/lib/core/push/driver_push_service.dart" 'onMessageOpenedApp' \
+  && contains "$DRIVER_ROOT/lib/core/push/driver_push_service.dart" 'getInitialMessage' \
+  && contains "$DRIVER_ROOT/lib/core/push/driver_push_service.dart" 'onBackgroundMessage'; then
+  pass 'Flutter foreground/background/terminated push lifecycle is wired'
+else
+  block 'Flutter push lifecycle wiring is incomplete'
+fi
+
+if contains "$DRIVER_ROOT/lib/core/device/driver_device_registrar.dart" "payload['push_token']" \
+  && contains "$DRIVER_ROOT/lib/features/security/data/driver_security_repository.dart" 'clearPushTokenBestEffort'; then
+  pass 'Driver FCM token registration and logout cleanup are wired'
+else
+  block 'Driver FCM token lifecycle is incomplete'
+fi
+
+if contains "$DRIVER_ROOT/lib/features/foundation/driver_foundation_shell.dart" '_showProductionIncomingOffer' \
+  && contains "$DRIVER_ROOT/lib/features/foundation/driver_foundation_shell.dart" '_offerResponseRepository.reject' \
+  && contains "$DRIVER_ROOT/lib/features/foundation/driver_foundation_shell.dart" '_acceptanceRepository.accept'; then
+  pass 'Incoming Driver order pushes route to server-authoritative offer actions'
+else
+  block 'Incoming Driver order push routing is incomplete'
 fi
 
 case "${GETIN_API_BASE_URL:-}" in

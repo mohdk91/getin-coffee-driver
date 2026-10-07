@@ -4,7 +4,7 @@ Production builds must use `APP_ENV=prod` and an HTTPS `API_BASE_URL`.
 
 Android submissions target API 36. Keep the upload keystore and `android/key.properties` outside Git.
 
-iOS submissions are built in Codemagic. Configure Apple signing there and use Xcode 26 or later. The source deployment target is iOS 13 or later.
+iOS submissions are built in Codemagic. Configure Apple signing there and use Xcode 26 or later. The source deployment target is iOS 15 or later.
 
 ## Android
 

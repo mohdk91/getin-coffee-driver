@@ -23,12 +23,13 @@ void main() {
 
     final docs = File('docs/production-release.md').readAsStringSync();
     expect(docs, contains('Xcode 26 or later'));
-    expect(docs, contains('iOS 13 or later'));
+    expect(docs, contains('iOS 15 or later'));
 
     expect(File('ios/Podfile').existsSync(), isTrue);
     final project =
         File('ios/Runner.xcodeproj/project.pbxproj').readAsStringSync();
     expect(project, isNot(contains('IPHONEOS_DEPLOYMENT_TARGET = 12.0;')));
-    expect(project, contains('IPHONEOS_DEPLOYMENT_TARGET = 13.0;'));
+    expect(project, isNot(contains('IPHONEOS_DEPLOYMENT_TARGET = 13.0;')));
+    expect(project, contains('IPHONEOS_DEPLOYMENT_TARGET = 15.0;'));
   });
 }
