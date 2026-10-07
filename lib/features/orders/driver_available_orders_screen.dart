@@ -442,7 +442,7 @@ class _AvailableOrderCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: GetinActionButton(
                     label: accepting
                         ? 'Accepting…'
@@ -475,6 +475,7 @@ class _AvailableOrderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
+                  flex: 2,
                   child: GetinActionButton(
                     label: 'Details',
                     icon: Icons.info_outline_rounded,
